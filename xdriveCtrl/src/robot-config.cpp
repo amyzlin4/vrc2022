@@ -16,6 +16,14 @@ controller Controller1 = controller(primary);
 inertial Inertial15 = inertial(PORT15);
 encoder EncoderR = encoder(Brain.ThreeWirePort.A);
 encoder EncoderL = encoder(Brain.ThreeWirePort.C);
+/*vex-vision-config:begin*/
+signature Vision7__DUCK = signature (1, 1153, 1903, 1528, -4991, -4379, -4685, 2.8, 0);
+signature Vision7__R = signature (2, 7765, 13653, 10709, -1947, -139, -1043, 1.9, 0);
+signature Vision7__B = signature (3, -3791, -2949, -3370, 9719, 11889, 10804, 3.4, 0);
+vision Vision7 = vision (PORT7, 50, Vision7__DUCK, Vision7__R, Vision7__B);
+/*vex-vision-config:end*/
+distance DistanceS = distance(PORT5);
+optical OpticalS = optical(PORT14);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable
