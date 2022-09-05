@@ -23,6 +23,7 @@ extern signature Vision7__SIG_7;
 extern vision Vision7;
 extern distance DistanceS;
 extern optical OpticalS;
+extern rotation RotationS;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.

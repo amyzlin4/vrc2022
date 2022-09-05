@@ -12,6 +12,7 @@
 // Vision7              vision        7               
 // DistanceS            distance      5               
 // OpticalS             optical       14              
+// RotationS            rotation      6               
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 
@@ -33,6 +34,7 @@ competition Competition;
 // define your global instances of motors and other devices here
 double angleT = 0;
 double driveBase = 10; // 20 inches
+double degOinch = 0.057;
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -75,23 +77,23 @@ void driveFor(double dist, double dir, double vel) {
   Motor2FR.setVelocity(vel,percent);
   Motor3BL.setVelocity(vel,percent);
   Motor4BR.setVelocity(vel,percent);
-  Motor1FL.spinFor(forward, (dist * 0.0587 * (cos(dir * M_PI / 180) + sin(dir * M_PI / 180))), turns, false);
-  Motor2FR.spinFor(forward, (dist * 0.0587 * (sin(dir * M_PI / 180) - cos(dir * M_PI / 180))), turns, false);
-  Motor3BL.spinFor(forward, (dist * 0.0587 * (sin(dir * M_PI / 180) - cos(dir * M_PI / 180))), turns, false);
-  Motor4BR.spinFor(forward, (dist * 0.0587 * (cos(dir * M_PI / 180) + sin(dir * M_PI / 180))), turns, false);
+  Motor1FL.spinFor(forward, (dist * degOinch * (cos(dir * M_PI / 180) + sin(dir * M_PI / 180))), turns, false);
+  Motor2FR.spinFor(forward, (dist * degOinch * (sin(dir * M_PI / 180) - cos(dir * M_PI / 180))), turns, false);
+  Motor3BL.spinFor(forward, (dist * degOinch * (sin(dir * M_PI / 180) - cos(dir * M_PI / 180))), turns, false);
+  Motor4BR.spinFor(forward, (dist * degOinch * (cos(dir * M_PI / 180) + sin(dir * M_PI / 180))), turns, false);
 }
 // =================================================================================
 void turnFor(double angl, double vel) {
   // to be tested 
-  double degOangl = 15;
+  double degOangl = 5;
   Motor1FL.setVelocity(vel,percent);
   Motor2FR.setVelocity(vel * -1,percent);
   Motor3BL.setVelocity(vel,percent);
   Motor4BR.setVelocity(vel * -1,percent);
-  Motor1FL.spinFor(forward,angl * degOangl,degrees);
-  Motor2FR.spinFor(forward,angl * degOangl,degrees);
-  Motor3BL.spinFor(forward,angl * degOangl,degrees);
-  Motor4BR.spinFor(forward,angl * degOangl,degrees);
+  Motor1FL.spinFor(forward,angl * degOangl,degrees, false);
+  Motor2FR.spinFor(forward,angl * degOangl,degrees, false);
+  Motor3BL.spinFor(forward,angl * degOangl,degrees, false);
+  Motor4BR.spinFor(forward,angl * degOangl,degrees, false);
 }
 // =================================================================================
 // =================================================================================
@@ -126,6 +128,10 @@ void driveTest() {
 void driveTest2() {
   driveFor(20,90,50); // up 20 inches
   wait(3,seconds);
+}
+void turnTest() {
+  turnFor(90,50);
+  wait(2,seconds);
 }
 void clearEncoders() {
   // set both encoders to 0
@@ -209,8 +215,8 @@ void colorS() {
 }
 void RB() {
   // recognizes red and blue objects 
-  // OpticalS.setLight(ledState::on);
-  // OpticalS.setLightPower(75,percent);
+  OpticalS.setLight(ledState::on);
+  OpticalS.setLightPower(50,percent);
   if(OpticalS.hue() < 40) {
     printf("RED\n");
   } else if(OpticalS.hue() > 180 && OpticalS.hue() < 315) {
@@ -249,7 +255,7 @@ int main() {
     Controller1.ButtonX.pressed(encoderTest);
     Controller1.ButtonY.pressed(driveTest2);
     Controller1.ButtonA.pressed(colorS);
-    Controller1.ButtonB.pressed(RB);
+    Controller1.ButtonB.pressed(turnTest);
     Controller1.ButtonRight.pressed(goToY);
     Controller1.ButtonLeft.pressed(goToDis);
     Controller1.ButtonUp.pressed(speedCtrl);
@@ -270,7 +276,7 @@ Notes:
 >> driveFor function:
 >>>> when asked to travel 18 in, travels 34.5 in
 >>>> old constant = 0.1125
->>>> new constant = 0.0587
+>>>> new constant = 0.057
 >> printf to print to terminal (using %f etc for formating and "\n" for new line)
 >> clear terminal manually with trash icon 
 >> distance between sensor and front of robot = 2 inches

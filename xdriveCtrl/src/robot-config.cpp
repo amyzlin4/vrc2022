@@ -24,6 +24,7 @@ vision Vision7 = vision (PORT7, 50, Vision7__DUCK, Vision7__R, Vision7__B);
 /*vex-vision-config:end*/
 distance DistanceS = distance(PORT5);
 optical OpticalS = optical(PORT14);
+rotation RotationS = rotation(PORT6, false);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable
