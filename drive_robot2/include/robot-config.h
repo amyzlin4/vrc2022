@@ -3,14 +3,12 @@ using namespace vex;
 extern brain Brain;
 
 // VEXcode devices
-extern motor_group MotorGroupR;
-extern motor_group MotorGroupL;
-extern inertial Inertial;
-extern controller Controller1;
+extern motor_group driveR;
+extern motor_group driveL;
 extern motor_group flywheel;
-extern motor indexer;
 extern motor intake;
-extern distance Distance;
+extern motor indexer;
+extern controller Controller1;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.
