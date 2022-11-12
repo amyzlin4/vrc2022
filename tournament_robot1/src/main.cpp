@@ -265,38 +265,7 @@ void pDrive() {
   MotorGroupL.stop();
   MotorGroupR.stop();
 }
-/*
-void pTurn(int ang) {
-  Inertial.setHeading(0,degrees);
-  int Cang = int (ang - Inertial.heading(degrees));
-  if(Cang <= -180) {
-    Cang = Cang + 360;
-  }
-  printf("%i\n\n", Cang);
-  while(abs(Cang) >= 2) {
-    MotorGroupL.setVelocity(abs(Cang) / 2,percent);
-    MotorGroupR.setVelocity(abs(Cang) / 2,percent);
-    if(Cang >= 0) {
-      MotorGroupL.spin(forward);
-      MotorGroupR.spin(reverse);
-    } 
-    else if(Cang < 0) {
-      MotorGroupL.spin(reverse);
-      MotorGroupR.spin(forward);
-    }
-    
-    Cang = int (ang - Inertial.heading(degrees));
-    if(Cang <= -180) {
-      Cang = Cang + 360;
-    }
-    printf("%i %f\n", Cang, Inertial.heading(degrees));
-  }
-  MotorGroupL.setStopping(coast);
-  MotorGroupR.setStopping(coast);
-  MotorGroupL.stop();
-  MotorGroupR.stop();
-}
-*/
+
 
 void printAngle() {
   printf("%f\n", Inertial.heading(degrees));
@@ -353,34 +322,26 @@ void pre_auton(void) {
 /* --------------------------------------------------------------------------*/
 
 void auto2() {
-  // worked on 10/07/2022
-  // starts with roller shaft aligned with roller edge (black)
+  // worked on 10/11/2022
+  // starts with plastic tag aligned with outer roller edge 
   //  and far edge slightly inside the tile lines
   MotorGroupL.setVelocity(60,percent);
   MotorGroupR.setVelocity(60,percent);
   MotorGroupL.spinFor(forward,250,degrees, false);
   MotorGroupR.spinFor(forward,2050,degrees, false);
   wait(1.8, sec);
-  // intake.setMaxTorque(100,percent);
   intake.setVelocity(100,percent);
   intake.spinFor(reverse,1.1,turns);
-  // MotorGroupL.spinFor(forward,10,degrees, false);
-  // MotorGroupR.spinFor(forward,10,degrees, false);
-  // intake.setMaxTorque(50,percent);
-  // wait(1.5, sec);
   MotorGroupL.spinFor(reverse,50,degrees, false);
   MotorGroupR.spinFor(reverse,3050,degrees, false);
-  wait(1.5, sec);
-  //turnFor(Inertial.heading(degrees) - 60, 30);
-  //wait(1, sec);
-  flywheel.setVelocity(92,percent);
+  wait(1.8, sec);
+  flywheel.setVelocity(93,percent);
   flywheel.spin(forward);
-  wait(1.4, sec);
+  wait(1.5, sec);
   indexer.setVelocity(100,percent);
   indexer.spinFor(forward,60,degrees);
   wait(150,msec);
   indexer.spinFor(reverse,60,degrees);
-  flywheel.setVelocity(93,percent);
   wait(1.4, sec);
   indexer.spinFor(forward,60,degrees);
   wait(150,msec);
@@ -390,7 +351,9 @@ void auto2() {
 }
 
 void auto3() {
-
+  // worked on 10/11/2022
+  // start: facing opponent side, intake on inner edge of tile,
+  //  wheels 1.5 of finger from inner edge of tile 
   MotorGroupL.setVelocity(65,percent);
   MotorGroupR.setVelocity(65,percent);
   MotorGroupR.spinFor(forward,1000,degrees, false);
@@ -398,7 +361,6 @@ void auto3() {
   wait(2, sec);
   intake.setVelocity(100,percent);
   intake.spinFor(forward,2,turns);
-  // wait(1, sec);
   MotorGroupL.setVelocity(50,percent);
   MotorGroupR.setVelocity(50,percent);
   MotorGroupR.spinFor(reverse,100,degrees, false);
@@ -411,7 +373,6 @@ void auto3() {
   indexer.spinFor(forward,60,degrees);
   wait(150,msec);
   indexer.spinFor(reverse,60,degrees);
-  // flywheel.setVelocity(93,percent);
   wait(1.5, sec);
   indexer.spinFor(forward,60,degrees);
   wait(150,msec);
@@ -422,7 +383,7 @@ void auto3() {
 
 void autonomous(void) {
    enableDriver = false;
-   auto3();
+   auto2();
 }
 /* --------------------------------------------------------------------------*/
 // User Control
