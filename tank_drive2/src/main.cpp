@@ -69,55 +69,20 @@ bool enableFlyPID = false;
 // smartdrive robot(driveL, driveR, Inertial, wheelTravel, trackWidth, trackLength, distanceUnits::in);
 
 // DRIVER CONTROL FUNCTIONS:
-void driver() {
+int driver() {
   driveL.setStopping(coast);
   driveR.setStopping(coast);
-  if((Controller1.Axis3.position(percent) > 4 || Controller1.Axis3.position(percent) < -4))
-  {
-    driveL.setVelocity((Controller1.Axis3.position(percent)) + Controller1.Axis1.position(percent), percent);
-    driveR.setVelocity((Controller1.Axis3.position(percent)) - Controller1.Axis1.position(percent), percent);
+  while(enableDriver) {
+    driveL.setVelocity(Controller1.Axis3.position(percent),percent);
+    driveR.setVelocity(Controller1.Axis2.position(percent),percent);
     driveL.spin(forward);
     driveR.spin(forward);
-  }
-  else if(Controller1.Axis1.position(percent) != 0)
-  {
-    driveL.setVelocity((Controller1.Axis3.position(percent)) + Controller1.Axis1.position(percent), percent);
-    driveR.setVelocity((Controller1.Axis3.position(percent)) - Controller1.Axis1.position(percent), percent);
-    driveL.spin(forward);
-    driveR.spin(forward);
-  }
-  else
-  {
-    driveL.setVelocity(0,percent);
-    driveR.setVelocity(0,percent);
+    task::sleep(10); // delay
   }
   
-}
-
-int flyPI() {
-
-  while(true) {
-
-    // proportional:
-    error = desiredVal - flywheel.voltage(voltageUnits::volt);
-
-    // derivative:
-    deriv = error - prevError;
-
-    // integral: 
-    totalError += error;
-
-    double pid = error * kp + deriv * kd + totalError * ki;
-    flywheel.spin(forward, pid + desiredVal, voltageUnits::volt);
-    printf("%f\n", flywheel.voltage(voltageUnits::volt));
-    // printf("%f\n", pid + desiredVal);
-
-    prevError = error;
-    task::sleep(100); // delay
-  }
-
   return 1;
 }
+
 
 int toggleFly() {  // use int for tasks (?)
   while(enableDriver) {
@@ -127,20 +92,17 @@ int toggleFly() {  // use int for tasks (?)
       lastF = true; // button was pressed before
       slowF = false; // set to normal speed
       fly = true;
-      enableFlyPID = false;
     } else if(Controller1.ButtonY.pressing() == false && Controller1.ButtonA.pressing() == true && !lastF) {
     // else if buttonY is pressing and button was not pressed before:
       toggleF = !toggleF; // switch toggle
       lastF = true; // button was pressed before
       slowF = true; // set to slower speed
       fly = true;
-      enableFlyPID = false;
+      enableFlyPID = true;
     } else if(Controller1.ButtonA.pressing() == false && Controller1.ButtonY.pressing() == false) {
     // else if button is not pressing:
       lastF = false; // button was not pressed before
       enableInt = true;
-      ///////// try this:
-      enableFlyPID = false;
     }
     // double diff = 0;
     // double goal = 0;
@@ -175,7 +137,7 @@ int toggleFly() {  // use int for tasks (?)
       //   printf("%f\n", flywheel.voltage(voltageUnits::volt));
 
       //   prevError = error;
-      //   task::sleep(50); // delay
+      //   task::sleep(100); // delay
       // }
       // flywheel.spin(forward, desiredVal, voltageUnits::volt);
       enableInt = false;
@@ -208,29 +170,25 @@ void ind() {
 }
 void fastInd() {
   fly = false;
-  flywheel.setStopping(brake);
-  flywheel.stop();
-  flywheel.setStopping(coast);
   indexer.setStopping(hold);
   int indTime = 200;
 
   flywheel.spin(forward, 9.6, voltageUnits::volt);
-  
-
   wait(0.4, sec);
 
   indexer.setPosition(0,degrees);
+
   indexer.spin(forward, 8, voltageUnits::volt);
   wait(indTime, msec);
-  
-  flywheel.spin(forward, 8.6, voltageUnits::volt);
-
   indexer.spin(reverse, 8, voltageUnits::volt);
   wait(indTime, msec); 
+
+  flywheel.spin(forward, 9, voltageUnits::volt);
   indexer.spin(forward, 8, voltageUnits::volt);
   wait(indTime, msec);
   indexer.spin(reverse, 8, voltageUnits::volt);
   wait(indTime, msec);
+
   
   indexer.spin(forward, 8, voltageUnits::volt);
   wait(indTime, msec);
@@ -240,62 +198,16 @@ void fastInd() {
   indexer.spinToPosition(0,degrees);
   
   fly = true;
-  flywheel.setVelocity(0,percent);
 }
-void fastIndPID() {
-  fly = false;
-  // flywheel.setStopping(brake);
-  // flywheel.stop();
-  // flywheel.setStopping(coast);
+// void intaker() {
 
-  // reset
-  error = 0;
-  prevError = 0;
-  deriv = 0;
-  totalError = 0;
+//   intake.setVelocity(100,percent);
+//   intake.spin(forward);
 
-  indexer.setStopping(hold);
-  int indTime = 200;
-
-  desiredVal = 7.9;
-  kp = 0.35;
-  ki = 0.9;
-  kd = 0.04;
-
-  vex::task PIDfly(flyPI);
-
-  wait(0.4, sec);
-
-  indexer.setPosition(0,degrees);
-  kd = 0.0;
-  indexer.spin(forward, 8, voltageUnits::volt);
-  wait(indTime, msec);
-  indexer.spin(reverse, 8, voltageUnits::volt);
-  wait(indTime, msec); 
-
-  // desiredVal = 6;
-  indexer.spin(forward, 8, voltageUnits::volt);
-  wait(indTime, msec);
-  indexer.spin(reverse, 8, voltageUnits::volt);
-  wait(indTime, msec);
-  
-  // kd = 0.01;
-  indexer.spin(forward, 8, voltageUnits::volt);
-  wait(indTime, msec);
-  indexer.spin(reverse, 8, voltageUnits::volt);
-  wait(indTime, msec);
-
-  indexer.spinToPosition(0,degrees);
-
-  vex::task::stop(PIDfly);
-
-  fly = true;
-  kp = 0;
-  ki = 0;
-  kd = 0;
-  desiredVal = 0;
-}
-
+// }
+// void stopIntaker() {
+//   intake.stop();
+// }
 int toggleRoll() {  // use int for tasks (?)
   while(enableDriver) {
     if(Controller1.ButtonL1.pressing() == true) { 
@@ -518,7 +430,30 @@ void goTo(double x, double y) {
   }
 }
 
+int flyPI() {
 
+  while(true) {
+
+    // proportional:
+    error = desiredVal - flywheel.voltage(voltageUnits::volt);
+
+    // derivative:
+    deriv = error - prevError;
+
+    // integral: 
+    totalError += error;
+
+    double pid = error * kp + deriv * kd + totalError * ki;
+    flywheel.spin(forward, pid + desiredVal, voltageUnits::volt);
+    printf("%f\n", flywheel.voltage(voltageUnits::volt));
+    // printf("%f\n", pid + desiredVal);
+
+    prevError = error;
+    task::sleep(100); // delay
+  }
+
+  return 1;
+}
 
 
  void test() {
@@ -532,86 +467,87 @@ void goTo(double x, double y) {
   // // turnFor(90,40);
   // wait(2, sec);
   // printf("%f\n", Inertial.heading(degrees));
+  ////////////////////////////////////////////////
+  desiredVal = 8;
+
+  kp = 0.15;
+  ki = 0.9;
+  kd = 0.03;
+
+  task PIDfly(flyPI);
   
+  wait(0.5, sec);
+  indexer.setStopping(hold);
+  int indTime = 190;
+  double indVolt = 10;
+  indexer.setPosition(0,degrees);
+
+  indexer.spin(forward, indVolt, voltageUnits::volt);
+  wait(indTime, msec);
+  kd = 0.01;
+  indexer.spin(reverse, indVolt, voltageUnits::volt);
+  wait(indTime, msec); 
+
+  indexer.spin(forward, indVolt, voltageUnits::volt);
+  wait(indTime, msec);
+  indexer.spin(reverse, indVolt, voltageUnits::volt);
+  wait(indTime, msec);
+
+  indexer.spin(forward, indVolt, voltageUnits::volt);
+  wait(indTime, msec);
+  indexer.spin(reverse, indVolt, voltageUnits::volt);
+  wait(indTime, msec);
+
+  indexer.spinToPosition(0,degrees);
 
  }
 
 
 void auto2v1() {
   // 3 tile side 
-  
-
-  // reset
-  error = 0;
-  prevError = 0;
-  deriv = 0;
-  totalError = 0;
-
-  indexer.setStopping(hold);
-  // indexer.setVelocity(100,percent);
-  indexer.setPosition(0,degrees);
-
-  // desiredVal = 7.15;
-  // kp = 0.3;
-  // ki = 0.9;
-  // kd = 0.04;
-
-  desiredVal = 7.5;
-  kp = 0.28;
-  ki = 0.9;
-  kd = 0.045;
-
-  
-
+  flywheel.spin(forward,7.7,voltageUnits::volt);
   roller.set(true);
   wait(0.5, sec);
-  driveL.setVelocity(50,percent);
-  driveR.setVelocity(50,percent);
-  driveL.spinFor(forward,500,degrees,false);
-  driveR.spinFor(forward,500,degrees,false);
-  wait(0.7, sec);
-  vex::task spinfly(flyPI);
+  driveL.setVelocity(40,percent);
+  driveR.setVelocity(40,percent);
+  driveL.spinFor(forward,110,degrees,false);
+  driveR.spinFor(forward,110,degrees,false);
+  wait(0.8, sec);
   roller.set(false);
-  wait(0.2, sec);
+  wait(0.5, sec);
   
-  // driveR.setVelocity(20,percent);
-  // driveR.spinFor(forward,35,degrees);
+  driveR.setVelocity(20,percent);
+  driveR.spinFor(forward,65,degrees);
+  wait(0.7, sec);
 
   
-  wait(1.5, sec);
-
-  // kd = 0.01;
-  // indexer.spinFor(forward,80,degrees);
-  indexer.spin(forward,4.75,voltageUnits::volt);
-  wait(300,msec);
-  printf("first disc\n");
-  // indexer.spinFor(reverse,80,degrees);
-  kd = 0.0;
-  kp = 0.3;
-  indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
-  indexer.stop();
-  wait(0.6, sec);
-  // indexer.spinFor(forward,80,degrees);
-  indexer.spin(forward,10,voltageUnits::volt);
-  wait(200,msec);
-  printf("second disc\n");
-  // indexer.spinFor(reverse,80,degrees);
-  indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
-  indexer.stop();
-
-  vex::task::stop(spinfly); 
-
-  indexer.spinToPosition(0,degrees);
-
-  kp = 0;
-  ki = 0;
-  kd = 0;
-  desiredVal = 0; 
+  wait(1, sec);
+  indexer.spinFor(forward,80,degrees);
+  wait(100,msec);
+  indexer.spinFor(reverse,80,degrees);
+  flywheel.spin(forward,8.1,voltageUnits::volt);
+  wait(2.5, sec);
+  indexer.spinFor(forward,80,degrees);
+  wait(100,msec);
+  indexer.spinFor(reverse,80,degrees);
   flywheel.stop();
+  
 }
+/*
+0
+370
+350
+330
+310
+...
+100
+98
+4
+380
+360
 
+
+*/
 
 void auto2v2() {
   // 3 tile side 
@@ -859,7 +795,8 @@ void auto3v3() {
 
 void autonomous(void) {
   enableDriver = false;
-  auto2v1();
+  // auto3v3();
+  test();
   
 
 }
@@ -881,6 +818,7 @@ void usercontrol(void) {
   task toggleFlyTask(toggleFly);
   task toggleIntTask(toggleInt);
   task toggleRollTask(toggleRoll);
+  task driverTask(driver);
   while (1) {
     
 
@@ -903,10 +841,10 @@ int main() {
   // Prevent main from exiting with an infinite loop.
   while (true) {
     
-    Controller1.Axis3.changed(driver);
-    Controller1.Axis1.changed(driver);
-    Controller1.ButtonR2.pressed(ind);
-    Controller1.ButtonR1.pressed(fastIndPID);
+    // Controller1.Axis3.changed(driver);
+    // Controller1.Axis1.changed(driver);
+    Controller1.ButtonR1.pressed(ind);
+    Controller1.ButtonR2.pressed(fastInd);
     Controller1.ButtonUp.pressed(expansion);
     
     Controller1.ButtonDown.pressed(temp);
