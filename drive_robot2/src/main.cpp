@@ -74,8 +74,8 @@ void driver() {
   driveR.setStopping(coast);
   if((Controller1.Axis3.position(percent) > 4 || Controller1.Axis3.position(percent) < -4))
   {
-    driveL.setVelocity((Controller1.Axis3.position(percent)) + Controller1.Axis1.position(percent), percent);
-    driveR.setVelocity((Controller1.Axis3.position(percent)) - Controller1.Axis1.position(percent), percent);
+    driveL.setVelocity((Controller1.Axis3.position(percent)) + Controller1.Axis1.position(percent) * 1.25, percent);
+    driveR.setVelocity((Controller1.Axis3.position(percent)) - Controller1.Axis1.position(percent) * 1.25, percent);
     driveL.spin(forward);
     driveR.spin(forward);
   }
@@ -215,16 +215,16 @@ void fastInd() {
   indexer.setStopping(hold);
   int indTime = 200;
 
-  flywheel.spin(forward, 9.6, voltageUnits::volt);
-  
+  // flywheel.spin(forward, 9.6, voltageUnits::volt);
+  flywheel.spin(forward,8.0, voltageUnits::volt);
 
-  wait(0.4, sec);
+  wait(0.5, sec);
 
   indexer.setPosition(0,degrees);
   indexer.spin(forward, 8, voltageUnits::volt);
   wait(indTime, msec);
   
-  flywheel.spin(forward, 8.6, voltageUnits::volt);
+  // flywheel.spin(forward, 8.6, voltageUnits::volt);
 
   indexer.spin(reverse, 8, voltageUnits::volt);
   wait(indTime, msec); 
@@ -233,9 +233,9 @@ void fastInd() {
   indexer.spin(reverse, 8, voltageUnits::volt);
   wait(indTime, msec);
   
-  indexer.spin(forward, 10, voltageUnits::volt);
+  indexer.spin(forward, 8.5, voltageUnits::volt);
   wait(indTime, msec);
-  indexer.spin(reverse, 8, voltageUnits::volt);
+  indexer.spin(reverse, 8.5, voltageUnits::volt);
   wait(indTime, msec);
 
   indexer.spinToPosition(0,degrees);
@@ -374,17 +374,17 @@ int toggleRoll() {  // use int for tasks (?)
 }
 int toggleInt() {  // use int for tasks (?)
   while(enableDriver) {
-    if(Controller1.ButtonB.pressing() == true && Controller1.ButtonX.pressing() == false && !lastI) { 
+    if(Controller1.ButtonL2.pressing() == true && Controller1.ButtonX.pressing() == false && !lastI) { 
     // if buttonB is pressing and was not pressed before:
       toggleI = !toggleI; // switch toggle
       lastI = true; // button was pressed before
       revI = false; // set to forward
-    } else if(Controller1.ButtonB.pressing() == false && Controller1.ButtonX.pressing() == true && !lastI) {
+    } else if(Controller1.ButtonL2.pressing() == false && Controller1.ButtonX.pressing() == true && !lastI) {
     // else if buttonX is pressing and was not pressed before:
       toggleI = !toggleI; // switch toggle
       lastI = true; // button was pressed before
       revI = true; // set to reverse
-    } else if(Controller1.ButtonB.pressing() == false && Controller1.ButtonX.pressing() == false) {
+    } else if(Controller1.ButtonL2.pressing() == false && Controller1.ButtonX.pressing() == false) {
       // else if buttons not pressing:
       lastI = false; // button was not pressed before
     }
@@ -621,7 +621,48 @@ void curveLeft(double angl, double t, double r) {
   // wait(2, sec);
   // printf("%f\n", Inertial.heading(degrees));
   /*Curve testing*///////////////////////////////////////////
-  curveRight(3.14159 / 2,2,10);
+  
+  // driveL.setStopping(coast);
+  // driveR.setStopping(coast);
+  // roller.set(true);
+  // wait(0.2, sec);
+  // driveL.setVelocity(50,percent);
+  // driveR.setVelocity(50,percent);
+  // driveL.spinFor(reverse, 1000, degrees, false);
+  // driveR.spinFor(reverse, 1000, degrees, false);
+  // wait(0.5,sec);
+  // roller.set(false);
+  // intake.setVelocity(100,percent);
+  // intake.spin(forward);
+  // flywheel.spin(reverse, 3, voltageUnits::volt);
+  // curveLeft(3.14159 *2 /3, 0.8, 2);
+  // // curveLeft(3.14159 /4, 0.8, 30);
+  // driveL.setVelocity(40,percent);
+  // driveR.setVelocity(40,percent);
+  // driveL.spinFor(forward, 2300, degrees, false);
+  // driveR.spinFor(forward, 800, degrees, false);
+  // wait(1.5, sec);
+  // turnFor(55,40);
+  // wait(0.7, sec);
+  // roller.set(true);
+  // driveL.setVelocity(40,percent);
+  // driveR.setVelocity(40,percent);
+  // driveL.spinFor(reverse, 1000, degrees, false);
+  // driveR.spinFor(reverse, 1000, degrees, false);
+  // wait(0.5, sec);
+  // roller.set(false);
+  // driveL.spinFor(forward, 500, degrees, false);
+  // driveR.spinFor(forward, 500, degrees, false);
+
+  driveL.setVelocity(30,percent);
+  driveR.setVelocity(30,percent);
+  driveL.spin(forward);
+  driveR.spin(forward);
+  wait(1, sec);
+  driveR.setVelocity(10,percent);
+  wait(1, sec);
+  driveL.setVelocity(20,percent);
+  driveR.setVelocity(40,percent);
 
  }
 
@@ -714,11 +755,11 @@ void auto2v2() {
   // indexer.setVelocity(100,percent);
   indexer.setPosition(0,degrees);
 
-  desiredVal = 7.3;
+  desiredVal = 7.1;
   kp = 0.31;
   ki = 0.9;
   kd = 0.045;
-  
+   
   roller.set(true);
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
@@ -1166,8 +1207,8 @@ void auto3v3() {
 
 void autonomous(void) {
   enableDriver = false;
-  auto3v2();
-  
+  // auto3v2();
+  test();
 
 }
 
@@ -1213,8 +1254,8 @@ int main() {
     Controller1.Axis3.changed(driver);
     Controller1.Axis1.changed(driver);
     Controller1.ButtonR2.pressed(ind);
-    Controller1.ButtonR1.pressed(fastIndPID);
-    Controller1.ButtonL2.pressed(farIndPID);
+    Controller1.ButtonR1.pressed(fastInd);
+    // Controller1.ButtonL2.pressed();
     Controller1.ButtonUp.pressed(expansion);
     
     Controller1.ButtonDown.pressed(temp);
