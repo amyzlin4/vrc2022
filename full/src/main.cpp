@@ -891,29 +891,31 @@ void auto2v1() {
 
 void auto2v2() {
   // 3 tile side 
+  enableFlywheelPID = true;
   // reset
-  error = 0;
-  prevError = 0;
-  deriv = 0;
-  totalError = 0;
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+
+  ///////////////////////////////////////////////
+  fDesiredVal = 52.5;
+  fkP = 0.30; //0.38
+  fkI = 0.08; //0.1
+  fkD = 0.03; //0.06
 
   indexer.setStopping(hold);
   // indexer.setVelocity(100,percent);
   indexer.setPosition(0,degrees);
-
-  desiredVal = 7.1;
-  kp = 0.31;
-  ki = 0.9;
-  kd = 0.045;
    
   roller.set(true);
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
   driveR.setVelocity(50,percent);
-  driveL.spinFor(forward,350,degrees,false);
-  driveR.spinFor(forward,350,degrees,false);
+  driveL.spinFor(forward,300,degrees,false);
+  driveR.spinFor(forward,300,degrees,false);
   wait(0.5, sec);
-  vex::task spinfly(flyPI);
+  vex::task spinfly(flywheelPID);
   roller.set(false);
   wait(0.2, sec);
   
@@ -922,43 +924,41 @@ void auto2v2() {
   driveR.spinFor(forward,70,degrees);
   */
 
-  wait(1.5, sec);
+  wait(1, sec);
 
-  indexer.spin(forward,4.75,voltageUnits::volt);
-  wait(300,msec);
+  indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
   printf("first disc\n");
-  desiredVal = 7.35;
-  // kd = 0.03;
-  // kp = 0.3;
   indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
+  wait(140,msec);
   indexer.stop();
-  wait(0.8, sec);
-  indexer.spin(forward,12,voltageUnits::volt);
-  wait(200,msec);
+  fDesiredVal = 51.7;
+  wait(0.9, sec);
+  indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
   printf("second disc\n");
   indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
+  wait(140,msec);
   indexer.stop();
 
   vex::task::suspend(spinfly); 
 
   indexer.spinToPosition(0,degrees);
 
-  kp = 0;
-  ki = 0;
-  kd = 0;
-  desiredVal = 0; 
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
   flywheel.stop();
+  enableFlywheelPID = false;
   
   // turn to intake
   
-  flywheel.spin(reverse,3,voltageUnits::volt);
   driveL.setVelocity(60,percent);
   driveR.setVelocity(60,percent);
-  driveL.spinFor(forward,1.14,turns,false);
-  driveR.spinFor(reverse,1.14,turns,false);
-  wait(0.6, sec);
+  driveL.spinFor(forward,1.18,turns,false);
+  driveR.spinFor(reverse,1.18,turns,false);
+  wait(0.65, sec);
   // intake 3
   intake.spin(forward,12,voltageUnits::volt);
   driveL.spin(forward,50,percent);
@@ -969,7 +969,7 @@ void auto2v2() {
   wait(1.5,sec);
   driveL.spin(forward,50,percent);
   driveR.spin(forward,50,percent);
-  wait(0.6, sec);
+  wait(0.4, sec);
   // turn to shoot
   driveL.stop();
   driveR.stop();
@@ -977,58 +977,64 @@ void auto2v2() {
   driveL.setVelocity(60,percent);
   driveR.setVelocity(60,percent);
   
-  driveL.spinFor(reverse,1.89,turns,false);
-  driveR.spinFor(forward,1.89,turns,false);
+  driveL.spinFor(reverse,1.91,turns,false);
+  driveR.spinFor(forward,1.91,turns,false);
   wait(0.9, sec);
   intake.stop();
-  flywheel.stop();
   // shoot 3
-  desiredVal = 7.0;
-  kp = 0.32;
-  ki = 0.9;
-  kd = 0.035;
+  enableFlywheelPID = true;
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+  // shoot 3
+  fDesiredVal = 47;
+  fkP = 0.30; //0.38
+  fkI = 0.08; //0.1
+  fkD = 0.04; //0.06
 
   // vex::task spinfly(flyPI);
   vex::task::resume(spinfly);
   intake.stop();
   wait(1.5, sec);
 
-  indexer.spin(forward,4.75,voltageUnits::volt);
-  wait(300,msec);
+  indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
   printf("first disc\n");
-  desiredVal = 7.2;
-  kd = 0.02;
-  kp = 0.3;
   indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
+  wait(140,msec);
   indexer.stop();
-  wait(0.5, sec);
-  indexer.spin(forward,10,voltageUnits::volt);
-  wait(200,msec);
+  fDesiredVal = 50;
+  wait(0.6, sec);
+  indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
   printf("second disc\n");
   indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
+  wait(140,msec);
   indexer.stop();
-  wait(0.5, sec);
-  indexer.spin(forward,12,voltageUnits::volt);
-  wait(200,msec);
+  fDesiredVal = 51;
+  wait(0.6, sec);
+  indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
   printf("third disc\n");
   indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
-  wait(0.5, sec);
-  indexer.spin(forward,10,voltageUnits::volt);
-  wait(200,msec);
+  wait(140,msec);
+  wait(0.6, sec);
+  indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
   printf("fourth try\n");
   indexer.spin(reverse,8,voltageUnits::volt);
-  wait(200,msec);
+  wait(140,msec);
   indexer.stop();
   vex::task::stop(spinfly); 
   indexer.spinToPosition(0,degrees);
-  kp = 0;
-  ki = 0;
-  kd = 0;
-  desiredVal = 0; 
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
   flywheel.stop();
+  enableFlywheelPID = false;
   
 }
 
@@ -1105,6 +1111,7 @@ void auto3v2() {
   // prevError = 0;
   // deriv = 0;
   // totalError = 0;
+  
   enableFlywheelPID = true;
   // reset
   fError = 0;
@@ -1113,21 +1120,21 @@ void auto3v2() {
   fTotalError = 0;
 
   ///////////////////////////////////////////////
-  fDesiredVal = 50.5;
+  fDesiredVal = 51.3;
   fkP = 0.30; //0.38
   fkI = 0.08; //0.1
   fkD = 0.03; //0.06
-
+  
   driveL.setStopping(coast);
   driveR.setStopping(coast);
-  driveL.setVelocity(65,percent);
-  driveR.setVelocity(65,percent);
-  driveR.spinFor(reverse,2225,degrees, false); //2150
-  driveL.spinFor(reverse,700,degrees, false);
-  wait(1.2, sec);
+  driveL.setVelocity(60,percent);
+  driveR.setVelocity(60,percent);
+  driveR.spinFor(reverse,2000,degrees, false); //2150 //2225
+  driveL.spinFor(reverse,475,degrees, false); //700
+  wait(1, sec);
 
   roller.set(true);
-  vex::task spinfly(flywheelPID);
+  vex::task spinfly(flywheelPID); // 1.4 sec before shoot
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
   driveR.setVelocity(50,percent);
@@ -1137,19 +1144,17 @@ void auto3v2() {
   
   roller.set(false);
   wait(0.2, sec);
-  driveL.spinFor(forward,180,degrees);
-  wait(0.5, sec);
+  driveL.spinFor(forward,165,degrees);
+  wait(0.3, sec);
 
   indexer.spin(forward,8,voltageUnits::volt);
   wait(140,msec);
   printf("first disc\n");
-  fDesiredVal = 53;
-  // kd = 0.03;
-  // kp = 0.3;
   indexer.spin(reverse,8,voltageUnits::volt);
   wait(140,msec);
   indexer.stop();
-  wait(0.8, sec);
+  fDesiredVal = 52.8;
+  wait(0.9, sec);
   indexer.spin(forward,8,voltageUnits::volt);
   wait(140,msec);
   printf("second disc\n");
@@ -1183,8 +1188,8 @@ void auto3v2() {
   intake.spin(forward);
   driveL.setVelocity(50,percent);
   driveR.setVelocity(50,percent);
-  driveL.spinFor(forward,15.2,turns,false);
-  driveR.spinFor(forward,15.2,turns,false);
+  driveL.spinFor(forward,15.1,turns,false);
+  driveR.spinFor(forward,15.1,turns,false);
   wait(3.1, sec); // 2.7
   // turn to shoot
   driveL.setVelocity(70,percent);
@@ -1201,7 +1206,7 @@ void auto3v2() {
   fDeriv = 0;
   fTotalError = 0;
   // shoot 3
-  fDesiredVal = 47;
+  fDesiredVal = 47.8;
   fkP = 0.30; //0.38
   fkI = 0.08; //0.1
   fkD = 0.04; //0.06
@@ -1214,9 +1219,6 @@ void auto3v2() {
   indexer.spin(forward,8,voltageUnits::volt);
   wait(140,msec);
   printf("first disc\n");
-  // desiredVal = 7.2;
-  // kd = 0.02;
-  // kp = 0.3;
   indexer.spin(reverse,8,voltageUnits::volt);
   wait(140,msec);
   indexer.stop();
@@ -1229,7 +1231,7 @@ void auto3v2() {
   indexer.spin(reverse,8,voltageUnits::volt);
   wait(140,msec);
   indexer.stop();
-  fDesiredVal = 51;
+  fDesiredVal = 51.9;
   wait(0.5, sec);
   indexer.spin(forward,8,voltageUnits::volt);
   wait(140,msec);
@@ -1370,7 +1372,7 @@ void auto3v3() {
 
 void autonomous(void) {
   enableDriver = false;
-  auto3v2();
+  auto2v2();
   
 
 }
