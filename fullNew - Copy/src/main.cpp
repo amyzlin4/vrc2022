@@ -12,7 +12,6 @@
 // [Name]               [Type]        [Port(s)]
 // intake               motor         3               
 // Controller1          controller                    
-// roller               digital_out   H               
 // expand               digital_out   A               
 // Inertial             inertial      19              
 // MotorR1              motor         13              
@@ -49,21 +48,12 @@ double TURN = 8; // update
 bool lastP = false;
 bool toggleP = false;
 bool enableDriver = true;
-bool enableInt = true;
+// bool enableInt = true;
 bool toggleR = false;
 bool lastR = false;
 int bkwd = 1;
-bool fly = true;
-// constants
-double kp = 0.15; // decreases as voltage increases
-double ki = 0.9; // tends to not change
-double kd = 0.03; // decreases for second and third discs
-double error;
-double prevError = 0;
-double deriv;
-double totalError = 0;
-double desiredVal = 0;
-bool enableFlyPID = false;
+// bool fly = true;
+bool intk = false;
 /*===================================================================*/
 double fkP = 0.15; // decreases as voltage increases
 double fkI = 0.9; // tends to not change
@@ -141,21 +131,11 @@ void fastInd1() {
 bool enableFlywheelPID = false;
 
 int flywheelPID(){
-  
-  // fkP = 0.28;
-  // fkD = 0.03;
-  // fkI = 0.9;
-  // double fDerivative;
-  // fError= 0;
-  // double fDesiredVal = 30;
 
   while(enableFlywheelPID){
-    // enableFlywheelPID = true;
-    // enableFlyPID = true;
-    double velocity = flywheel.velocity(percent);
   
-    //printf("velo: %f\n", velocity);
-    // double velo = flywheel.velocity(percent);
+    double velocity = flywheel.velocity(percent);
+    
     // proportional:
     fError = fDesiredVal - velocity;
     
@@ -166,7 +146,6 @@ int flywheelPID(){
     fTotalError += fError;
 
     double pid = fError * fkP + fDerivative * fkD + fTotalError * fkI;
-    //printf("E: %f, D: %f, TE: %f, pid: %f\n", fError, fDeriv, fTotalError, pid);
     double volt = (fDesiredVal + pid)/9;
     if (volt > 12){
       printf("volt > 10: %f\n", volt);
@@ -178,8 +157,7 @@ int flywheelPID(){
     }
     flywheel.spin(forward, volt, voltageUnits::volt);
     
-    //flywheel.spin(forward, 50, percentUnits::pct);
-    printf("err: %f pid:%f cvelo: %f cvolt: %f %f\n",velocity, fError, pid, volt, totalTimesShot);
+    printf("err: %f pid:%f cvelo: %f cvolt: %f\n",velocity, fError, pid, volt);
     // printf("%f\n", pid + desiredVal);
 
     fPrevError = fError;
@@ -191,40 +169,47 @@ int flywheelPID(){
 }
 
 void fastIndPID() {
-  fly = false;
+  // fly = false;
+  intk = false;
 
   // reset
-  error = 0;
-  prevError = 0;
+  fError = 0;
+  fPrevError = 0;
   fDerivative = 0;
-  totalError = 0;
-
-  // int indTime = 120; 
+  fTotalError = 0;
 
   fDesiredVal = 100;
   fkP = 200; //0.38
-  fkI = 100; //0.1
+  fkI = 500; //0.1
   fkD = 160; //0.06
   
   enableFlywheelPID = true;
   vex::task PIDfly(flywheelPID);
 
-  wait(1, sec);
-  enableInt = true;
-  // intake.spin(reverse, 100, percent);
-  wait(1.1, sec);
+  wait(1.5, sec);
+  // enableInt = true;
+  intVel = 70;
+  // wait(1.5, sec);
+  wait(0.4, sec);
+  // printf("%f", intake.velocity(percent));
+  // intVel = 90;
+  wait(0.3, sec);
   
+  // printf("%f", intake.velocity(percent));
+  intVel = 100;
+  wait(0.5, sec);
+  printf("%f", intake.velocity(percent));
 
   vex::task::stop(PIDfly);
-  fly = true;
+  // fly = true;
   fkP = 0;
   fkI = 0;
   fkD = 0;
   fDesiredVal = 0;
   enableFlywheelPID = false;
-  enableFlyPID = false;
+  intk = true;
   // intake.stop();
-  enableInt = false;
+  // enableInt = false;
 }
 
 void driver() {
@@ -236,7 +221,7 @@ void driver() {
     // driveR.setVelocity((Controller1.Axis3.position(percent)) - Controller1.Axis1.position(percent) * 1.25, percent);
     // driveL.spin(forward);
     // driveR.spin(forward);
-    double l = (Controller1.Axis3.position(percent) + (Controller1.Axis1.position(percent) * 1.15)) / 9 + 0.02;
+    double l = (Controller1.Axis3.position(percent) + (Controller1.Axis1.position(percent) * 1.15)) / 9;
     double r = (Controller1.Axis3.position(percent) - (Controller1.Axis1.position(percent) * 1.15)) / 9;
     driveL.spin(forward,l,voltageUnits::volt);
     driveR.spin(forward,r,voltageUnits::volt);
@@ -261,87 +246,52 @@ void driver() {
   }
   
 }
-/////////////////////////////////////////////////////////////////////////////////
 /*
-int flyPI() {
-
-  while(true) {
-
-    // proportional:
-    error = desiredVal - flywheel.voltage(voltageUnits::volt);
-
-    // derivative:
-    deriv = error - prevError;
-
-    // integral: 
-    totalError += error;
-
-    double pid = error * kp + deriv * kd + totalError * ki;
-    flywheel.spin(forward, pid + desiredVal, voltageUnits::volt);
-    printf("%f\n", flywheel.voltage(voltageUnits::volt));
-    printf("indexer: %f\n", indexer.voltage(voltageUnits::volt));
-    // printf("%f\n", pid + desiredVal);
-
-    prevError = error;
-    task::sleep(100); // delay
-  }
-
-  return 1;
-}
-*/
-////////////////////////////////////////////////////////////////////////////////////
 int toggleFly() {  // use int for tasks (?)
-  while(enableDriver) {
+  while(enableDriver && !enableFlywheelPID) {
     if(Controller1.ButtonY.pressing() == true && Controller1.ButtonR2.pressing() == false && !lastF) { 
-    // if buttonA is pressing and button was not pressed before:
+    // if buttonY is pressing and button was not pressed before:
       toggleF = !toggleF; // switch toggle
       lastF = true; // button was pressed before
       slowF = false; // set to normal speed
-      fly = true;
-      // enableFlyPID = false;
+      // fly = true;
       enableFlywheelPID = false;
     } else if(Controller1.ButtonY.pressing() == false && Controller1.ButtonR2.pressing() == true && !lastF) {
-    // else if buttonY is pressing and button was not pressed before:
+    // else if buttonR2 is pressing and button was not pressed before:
       toggleF = !toggleF; // switch toggle
       lastF = true; // button was pressed before
       slowF = true; // set to slower speed
-      fly = true;
-      // enableFlyPID = false;
+      // fly = true;
       enableFlywheelPID = false;
 
     } else if(Controller1.ButtonR2.pressing() == false && Controller1.ButtonY.pressing() == false ) {
     // else if button is not pressing:
       lastF = false; // button was not pressed before
-      ///////// try this:
-      // enableFlyPID = false;
       enableFlywheelPID = false;
-      // fly = true;
-      // flywheel.spin(forward,1.5,voltageUnits::volt);
+      
     }
-    // double diff = 0;
-    // double goal = 0;
-    if(toggleF && slowF == false) {
+
+    if(toggleF && !slowF) {
       // if toggle on and not slow
-      /*default*/////////////////////////////////////////////////
       flywheel.setStopping(coast);
       flywheel.spin(forward,11.0,voltageUnits::volt);
 
-    } else if(toggleF && slowF == true) {
+    } else if(toggleF && slowF) {
       // if toggle on and slow
       flywheel.setStopping(coast);
       flywheel.spin(forward,10,voltageUnits::volt);
-    } else if(fly && enableFlywheelPID == false) {
-      
-      // flywheel.spin(forward,1.5,voltageUnits::volt);
-      flywheel.setVelocity(0,percent);
-      flywheel.stop();
+    } else  {
+      // if not using PID
+      flywheel.spin(forward,1.5,voltageUnits::volt);
+      // flywheel.setVelocity(0,percent);
+      // flywheel.stop();
 
     }
     task::sleep(50); // delay
   }
   return 1; // all tasks must return (?)
 }
-
+*/
 void ind() {
   intake.setVelocity(80,percent);
   intake.spinFor(reverse,100,degrees);
@@ -448,50 +398,37 @@ void farIndPID() {
   flywheel.stop();
 }
 */
-int toggleRoll() {  // use int for tasks (?)
-  while(enableDriver) {
-    if(Controller1.ButtonL1.pressing() == true) { 
-    // if buttonA is pressing:
-      roller.set(true);
-    } else {
-    // else if buttonA is not pressing:
-      roller.set(false);
-    }
-  
-    task::sleep(50); // delay
-  }
-  return 1; // all tasks must return (?)
-}
-
+/*
 int toggleInt() {  // use int for tasks (?)
-  while(enableDriver) {
-    if(Controller1.ButtonL2.pressing() == true && Controller1.ButtonX.pressing() == false && !lastI) { 
-    // if buttonB is pressing and was not pressed before:
+  while(enableDriver && !enableFlywheelPID) {
+    if(Controller1.ButtonL1.pressing() == true && Controller1.ButtonX.pressing() == false && !lastI) { 
+    // if buttonL1 is pressing and was not pressed before:
       toggleI = !toggleI; // switch toggle
-      lastI = true; // button was pressed before
-      revI = false; // set to forward
-    } else if(Controller1.ButtonL2.pressing() == false && Controller1.ButtonX.pressing() == true && !lastI) {
+      lastI = true; // button was pressed before 
+      revI = false; // set to intake/roller
+      intk = true; 
+    } else if(Controller1.ButtonL1.pressing() == false && Controller1.ButtonX.pressing() == true && !lastI) {
     // else if buttonX is pressing and was not pressed before:
       toggleI = !toggleI; // switch toggle
       lastI = true; // button was pressed before
-      revI = true; // set to reverse
-    } else if(Controller1.ButtonL2.pressing() == false && Controller1.ButtonX.pressing() == false) {
+      revI = true; // set to index
+      intk = true;
+    } else if(Controller1.ButtonL1.pressing() == false && Controller1.ButtonX.pressing() == false) {
       // else if buttons not pressing:
       lastI = false; // button was not pressed before
     }
-    if(toggleI && revI == false) {
+    if(toggleI && !revI) {
       // if toggle on and not reverse
-      intVel = 100;
+      intVel = 95; // intake/roller
       intake.setVelocity(intVel,percent);
       intake.spin(forward);
       
-      // flywheel.spin(forward,2,voltageUnits::volt);
-    } else if((toggleI && revI == true) || enableInt) {
+    } else if((toggleI && revI)) {
       // else if toggle on and reverse
-      intVel = 100;
+      intVel = 85; // index
       intake.setVelocity(intVel,percent);
       intake.spin(reverse);
-    } else {
+    } else if(intk && !enableFlywheelPID){
       intake.stop();
       
     }
@@ -499,7 +436,7 @@ int toggleInt() {  // use int for tasks (?)
   }
   return 1; // all tasks must return (?)
 }
-
+*/
 void expansion() {
   if(enableDriver) {
     expand.set(true);
@@ -509,29 +446,41 @@ void expansion() {
 }
 
 void temp() {
+  // print to console
   printf("Right Drive: %f\n", driveR.temperature(percent));
   printf("Left Drive: %f\n", driveL.temperature(percent));
   printf("Flywheel: %f\n", flywheel.temperature(percent));
   printf("Intake: %f\n", intake.temperature(percent));
   
-  if(intake.temperature(percent) >= 60) {
+  // print to brain
+  Brain.Screen.clearScreen();
+  bool overheat = false;
+  if(intake.temperature(percent) >= 50) {
     Brain.Screen.print("intake: ");
     Brain.Screen.print(intake.temperature(percent));
     Brain.Screen.newLine();
+    overheat = true;
   }
-  if(flywheel.temperature(percent) >= 60) {
+  if(flywheel.temperature(percent) >= 50) {
     Brain.Screen.print("flywheel: ");
     Brain.Screen.print(flywheel.temperature(percent));
     Brain.Screen.newLine();
+    overheat = true;
   }
-  if(driveR.temperature(percent) >= 60) {
+  if(driveR.temperature(percent) >= 50) {
     Brain.Screen.print("right drive: ");
     Brain.Screen.print(driveR.temperature(percent));
     Brain.Screen.newLine();
+    overheat = true;
   }
-  if(driveL.temperature(percent) >= 60) {
+  if(driveL.temperature(percent) >= 50) {
     Brain.Screen.print("left drive: ");
     Brain.Screen.print(driveL.temperature(percent));
+    Brain.Screen.newLine();
+    overheat = true;
+  }
+  if(!overheat) {
+    Brain.Screen.print("No overheating... yet :)");
     Brain.Screen.newLine();
   }
 }
@@ -543,11 +492,11 @@ void pre_auton(void) {
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
   enableDriver = false;
-  // Inertial.calibrate();
   flywheel.setStopping(coast);
   driveL.setStopping(brake);
   driveR.setStopping(brake);
   Inertial.calibrate();
+  // expand.set(true);
 }
 
 /* --------------------------------------------------------------------------*/
@@ -845,7 +794,7 @@ void auto2v1() {
 
   // set indexer if necessary
    
-  roller.set(true);
+  // roller.set(true);
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
   driveR.setVelocity(50,percent);
@@ -853,7 +802,7 @@ void auto2v1() {
   driveR.spinFor(forward,300,degrees,false);
   wait(0.5, sec);
   vex::task spinfly(flywheelPID);
-  roller.set(false);
+  // roller.set(false);
   wait(0.2, sec);
 
   wait(1, sec);
@@ -901,7 +850,7 @@ void auto2v2() {
 
   
    
-  roller.set(true);
+  // roller.set(true);
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
   driveR.setVelocity(50,percent);
@@ -909,7 +858,7 @@ void auto2v2() {
   driveR.spinFor(forward,300,degrees,false);
   wait(0.5, sec);
   vex::task spinfly(flywheelPID);
-  roller.set(false);
+  // roller.set(false);
   wait(0.2, sec);
 
   wait(1, sec);
@@ -1048,7 +997,7 @@ void auto3v1() {
   driveL.spinFor(reverse,475,degrees, false); //700
   wait(1, sec);
 
-  roller.set(true);
+  // roller.set(true);
   vex::task spinfly(flywheelPID); // 1.4 sec before shoot
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
@@ -1057,7 +1006,7 @@ void auto3v1() {
   driveR.spinFor(forward,150,degrees,false);
   wait(0.3, sec);
   
-  roller.set(false);
+  // roller.set(false);
   wait(0.2, sec);
   driveL.spinFor(forward,175,degrees);
   wait(0.3, sec);
@@ -1113,7 +1062,7 @@ void auto3v2() {
   driveL.spinFor(reverse,475,degrees, false); //700
   wait(1, sec);
 
-  roller.set(true);
+  // roller.set(true);
   vex::task spinfly(flywheelPID); // 1.4 sec before shoot
   wait(0.2, sec);
   driveL.setVelocity(50,percent);
@@ -1122,7 +1071,7 @@ void auto3v2() {
   driveR.spinFor(forward,150,degrees,false);
   wait(0.3, sec);
   
-  roller.set(false);
+  // roller.set(false);
   wait(0.2, sec);
   driveL.spinFor(forward,175,degrees);
   wait(0.3, sec);
@@ -1350,7 +1299,7 @@ void auto3v3() {
 void autonomous(void) {
   enableDriver = false;
   //auto2v2();
-  test2();
+  // test2();
 
 }
 
@@ -1367,12 +1316,12 @@ void autonomous(void) {
 void usercontrol(void) {
   // User control code here, inside the loop
   enableDriver = true;
-  enableInt = false;
+  
+  intVel = 90;
   // create tasks outside of while loop
-  task toggleFlyTask(toggleFly);
-  task toggleIntTask(toggleInt);
-  task toggleRollTask(toggleRoll);
-  task::setPriority(toggleFlyTask,2);
+  // task toggleFlyTask(toggleFly);
+  // task toggleIntTask(toggleInt);
+  // task::setPriority(toggleFlyTask,2);
   while (1) {
     
 
@@ -1397,8 +1346,6 @@ int main() {
     
     Controller1.Axis3.changed(driver);
     Controller1.Axis1.changed(driver);
-    //Controller1.ButtonA.pressed(ind);
-    // Controller1.ButtonR2.pressed(fwdFlywheel);
     Controller1.ButtonR1.pressed(fastIndPID);
     Controller1.ButtonUp.pressed(expansion);
     

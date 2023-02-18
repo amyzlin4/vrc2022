@@ -10,7 +10,6 @@ brain  Brain;
 // VEXcode device constructors
 motor intake = motor(PORT3, ratio6_1, true);
 controller Controller1 = controller(primary);
-digital_out roller = digital_out(Brain.ThreeWirePort.H);
 digital_out expand = digital_out(Brain.ThreeWirePort.A);
 inertial Inertial = inertial(PORT19);
 motor MotorR1 = motor(PORT13, ratio6_1, true);
