@@ -146,7 +146,7 @@ int flywheelPID(){
 
     double pid = fError * fkP + fDerivative * fkD + fTotalError * fkI;
     //printf("E: %f, D: %f, TE: %f, pid: %f\n", fError, fDeriv, fTotalError, pid);
-    double volt = (fDesiredVal + pid)/9;
+    double volt = (fDesiredVal + pid)/7;
     if (volt > 12){
       // printf("volt > 10: %f\n", volt);
       volt = 12;
@@ -159,12 +159,12 @@ int flywheelPID(){
     
     //flywheel.spin(forward, 50, percentUnits::pct);
     // printf("err: %f pid:%f cvelo: %f cvolt: %f %f\n",velocity, fError, pid, volt, totalTimesShot);
-    printf("pid: %f   f(V): %f   f(S): %f   i: %f\n", pid+fDesiredVal, flywheel.voltage(voltageUnits::volt), flywheel.velocity(percent), intake.velocity(percent));
+    printf("pid: %f   f(V): %f   f(RPM): %f   f(PCT): %f   i: %f\n", volt, flywheel.voltage(voltageUnits::volt), flywheel.velocity(rpm), flywheel.velocity(percent), intake.velocity(percent));
 
     // printf("%f\n", pid + desiredVal);
 
     fPrevError = fError;
-    task::sleep(70); // delay
+    task::sleep(30); // delay
 
   }
   
@@ -183,16 +183,21 @@ void fastIndPID() {
   // int indTime = 120; 
 
   // fDesiredVal = 100;
-  fDesiredVal = 12;
-  fkP = 0.38; //0.38
+  // fDesiredVal = 12;
+  // fkP = 0.38; //0.38
+  // fkI = 0; //0.1
+  // fkD = 0.1; //0.06
+  fDesiredVal = 80;
+  fkP = 0.48; //0.38
   fkI = 0; //0.1
   fkD = 0.1; //0.06
   
   enableFlywheelPID = true;
   // vex::task PIDfly(flywheelPID);
-  vex::task PIDfly(flyPI);
+  // vex::task PIDfly(flyPI);
+  flywheel.spin(forward,12,voltageUnits::volt);
   
-  wait(0.6, sec);
+  wait(0.3, sec);
   enableInt = true;
   intake.spin(reverse,12,voltageUnits::volt);
   // wait(1.6, sec); // 0.5
@@ -215,7 +220,9 @@ void fastIndPID() {
   wait(0.6, sec);
   // printf("3: %f\n", intake.velocity(percent));
   enableInt = false;
-  vex::task::stop(PIDfly);
+  // vex::task::stop(PIDfly);
+  flywheel.setStopping(coast);
+  flywheel.stop();
   fly = true;
   fkP = 0;
   fkI = 0;
@@ -225,6 +232,57 @@ void fastIndPID() {
   // enableFlyPID = false;
   // intake.stop();
   // enableInt = false;
+}
+
+void farShot() {
+  fly = false;
+
+   // reset
+  fError = 0;
+  fPrevError = 0;
+  fDerivative = 0;
+  fTotalError = 0;
+
+  fDesiredVal = 100;
+  fkP = 0.48; //0.38
+  fkI = 0; //0.1
+  fkD = 0.1; //0.06
+  
+  // flywheel.spin(forward,12,voltageUnits::volt);
+  enableFlywheelPID = true;
+  vex::task flyPID(flywheelPID);
+  wait(2.6, sec);
+
+  enableInt = true;
+  intake.spin(reverse,10,voltageUnits::volt);
+  wait(0.17, sec);
+
+  enableInt = false;
+  wait(0.6, sec);
+
+  enableInt = true;
+  intake.spin(reverse,10,voltageUnits::volt);
+  wait(0.17, sec);
+
+  enableInt = false;
+  wait(0.6, sec);
+
+  enableInt = true;
+  intake.spin(reverse,10,voltageUnits::volt);
+  wait(0.4, sec);
+
+  enableInt = false;
+  wait(0.1, sec);
+  flywheel.setStopping(coast);
+  // flywheel.stop();
+  vex::task::stop(flyPID);
+  fly = true;
+  enableFlywheelPID = false;
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0;
+  
 }
 
 void driver() {
@@ -315,8 +373,8 @@ int toggleFly() {  // use int for tasks (?)
 
 void ind() {
   enableInt = true;
-  intake.spin(reverse,100,percent);
-  wait(0.3, sec);
+  intake.spin(reverse,10,voltageUnits::volt);
+  wait(0.2, sec);
   intake.stop();
   enableInt = false;
   
@@ -619,6 +677,7 @@ int main() {
     Controller1.ButtonA.pressed(ind);
     Controller1.ButtonR1.pressed(fastIndPID);
     // Controller1.ButtonUp.pressed(expansion);
+    Controller1.ButtonB.pressed(farShot);
     
     Controller1.ButtonDown.pressed(temp);
 
