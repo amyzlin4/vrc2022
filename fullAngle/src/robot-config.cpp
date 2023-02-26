@@ -22,6 +22,7 @@ encoder EncoderR = encoder(Brain.ThreeWirePort.C);
 encoder EncoderL = encoder(Brain.ThreeWirePort.E);
 motor flywheel = motor(PORT2, ratio6_1, true);
 digital_out angler = digital_out(Brain.ThreeWirePort.A);
+digital_out expand = digital_out(Brain.ThreeWirePort.B);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable

@@ -24,6 +24,7 @@
 // EncoderL             encoder       E, F            
 // flywheel             motor         2               
 // angler               digital_out   A               
+// expand               digital_out   B               
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
@@ -171,8 +172,79 @@ int flywheelPID(){
   return 1;
 }
 
-void fastIndPID() {
+void tripShot1() {
   fly = false;
+
+  driveL.setStopping(hold);
+  driveR.setStopping(hold);
+
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDerivative = 0;
+  fTotalError = 0;
+
+  // int indTime = 120; 
+
+  // fDesiredVal = 100;
+  // fDesiredVal = 12;
+  // fkP = 0.38; //0.38
+  // fkI = 0; //0.1
+  // fkD = 0.1; //0.06
+  fDesiredVal = 80;
+  fkP = 0.48; //0.38
+  fkI = 0; //0.1
+  fkD = 0.1; //0.06
+  
+  enableFlywheelPID = true;
+  // vex::task PIDfly(flywheelPID);
+  // vex::task PIDfly(flyPI);
+  flywheel.spin(forward,12,voltageUnits::volt);
+  
+  wait(0.15, sec); //0.29
+  enableInt = true;
+  intake.spin(reverse,10,voltageUnits::volt);
+  // wait(1.6, sec); // 0.5
+  // enableInt = false;
+  wait(0.2, sec);
+  // printf("1: %f\n", intake.velocity(percent));
+  
+  enableInt = false;
+  wait(0.1, sec);
+  enableInt = true;
+  intake.spin(reverse,12,voltageUnits::volt);
+  wait(0.3, sec);
+  // printf("2: %f\n", intake.velocity(percent));
+  // enableInt = false;
+  // wait(0.2, sec);
+  // enableInt = true;
+  // intake.spin(reverse,12,voltageUnits::volt);
+  // fkP = 10;
+  // fkI = 10;
+  wait(0.7, sec);
+  // printf("3: %f\n", intake.velocity(percent));
+  enableInt = false;
+  // vex::task::stop(PIDfly);
+  flywheel.setStopping(coast);
+  flywheel.stop();
+  fly = true;
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0;
+  enableFlywheelPID = false;
+  driveL.setStopping(coast);
+  driveR.setStopping(coast);
+  // enableFlyPID = false;
+  // intake.stop();
+  // enableInt = false;
+}
+
+
+void tripShot2() {
+  fly = false;
+  driveL.setStopping(hold);
+  driveR.setStopping(hold);
 
   // reset
   fError = 0;
@@ -199,17 +271,21 @@ void fastIndPID() {
   
   wait(0.3, sec);
   enableInt = true;
-  intake.spin(reverse,12,voltageUnits::volt);
+  intake.spin(reverse,10,voltageUnits::volt);
   // wait(1.6, sec); // 0.5
   // enableInt = false;
-  wait(0.2, sec);
+  wait(0.4, sec);
   // printf("1: %f\n", intake.velocity(percent));
-  
+  enableInt = false;
+  wait(0.1, sec);
+  enableInt = true;
+  intake.spin(reverse,12,voltageUnits::volt);
   // enableInt = false;
   // wait(0.1, sec);
   // enableInt = true;
   // intake.spin(reverse,12,voltageUnits::volt);
-  wait(0.3, sec);
+  wait(0.4, sec);
+  
   // printf("2: %f\n", intake.velocity(percent));
   // enableInt = false;
   // wait(0.2, sec);
@@ -217,7 +293,7 @@ void fastIndPID() {
   // intake.spin(reverse,12,voltageUnits::volt);
   // fkP = 10;
   // fkI = 10;
-  wait(0.6, sec);
+  wait(0.4, sec);
   // printf("3: %f\n", intake.velocity(percent));
   enableInt = false;
   // vex::task::stop(PIDfly);
@@ -229,6 +305,8 @@ void fastIndPID() {
   fkD = 0;
   fDesiredVal = 0;
   enableFlywheelPID = false;
+  driveL.setStopping(coast);
+  driveR.setStopping(coast);
   // enableFlyPID = false;
   // intake.stop();
   // enableInt = false;
@@ -322,16 +400,16 @@ void driver() {
 
 int toggleFly() {  // use int for tasks (?)
   while(enableDriver) {
-    if(Controller1.ButtonY.pressing() && !Controller1.ButtonR2.pressing() && !lastF) { 
-    // if buttonA is pressing and button was not pressed before:
+    if(Controller1.ButtonY.pressing() && !Controller1.ButtonB.pressing() && !lastF) { 
+    // if buttonY is pressing and button was not pressed before:
       toggleF = !toggleF; // switch toggle
       lastF = true; // button was pressed before
       slowF = false; // set to normal speed
       fly = true;
       // enableFlyPID = false;
       enableFlywheelPID = false;
-    } else if(!Controller1.ButtonY.pressing() && Controller1.ButtonR2.pressing() && !lastF) {
-    // else if buttonY is pressing and button was not pressed before:
+    } else if(!Controller1.ButtonY.pressing() && Controller1.ButtonB.pressing() && !lastF) {
+    // else if buttonB is pressing and button was not pressed before:
       toggleF = !toggleF; // switch toggle
       lastF = true; // button was pressed before
       slowF = true; // set to slower speed
@@ -339,7 +417,7 @@ int toggleFly() {  // use int for tasks (?)
       // enableFlyPID = false;
       enableFlywheelPID = false;
 
-    } else if(!Controller1.ButtonR2.pressing() && !Controller1.ButtonY.pressing()) {
+    } else if(!Controller1.ButtonB.pressing() && !Controller1.ButtonY.pressing()) {
     // else if button is not pressing:
       lastF = false; // button was not pressed before
       ///////// try this:
@@ -399,7 +477,7 @@ int toggleInt() {  // use int for tasks (?)
     }
     if(toggleI && revI == false) {
       // if toggle on and not reverse
-      intVel = 95;
+      intVel = 100;
       intake.setVelocity(intVel,percent);
       intake.spin(forward);
       
@@ -435,7 +513,7 @@ int toggleAngl() {
   }
   return 1;
 }
-/*
+
 void expansion() {
   if(enableDriver) {
     expand.set(true);
@@ -443,7 +521,7 @@ void expansion() {
     expand.set(false);
   }
 }
-*/
+
 void temp() {
   printf("Right Drive: %f\n", driveR.temperature(percent));
   printf("Left Drive: %f\n", driveL.temperature(percent));
@@ -496,6 +574,7 @@ void pre_auton(void) {
   driveR.setStopping(brake);
   Inertial.calibrate();
   angler.set(false);
+  expand.set(false);
 }
 
 /* --------------------------------------------------------------------------*/
@@ -507,6 +586,148 @@ void pre_auton(void) {
 /*================================================================================================*/
 /* TOURNAMENT AUTONS                                                                              */
 /*================================================================================================*/
+
+
+void auto2v2() {
+  // 3 tile side 
+  enableFlywheelPID = true;
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+
+  fDesiredVal = 52.6;
+  fkP = 0.30; //0.38
+  fkI = 0.08; //0.1
+  fkD = 0.03; //0.06
+
+  
+   
+  roller.set(true);
+  wait(0.2, sec);
+  driveL.setVelocity(50,percent);
+  driveR.setVelocity(50,percent);
+  driveL.spinFor(forward,300,degrees,false);
+  driveR.spinFor(forward,300,degrees,false);
+  wait(0.5, sec);
+  vex::task spinfly(flywheelPID);
+  roller.set(false);
+  wait(0.2, sec);
+
+  wait(1, sec);
+
+  // indexer.spin(forward,11,voltageUnits::volt);
+  wait(95,msec);
+  printf("first disc\n");
+  // indexer.spin(reverse,8,voltageUnits::volt);
+  wait(140,msec);
+  // indexer.stop();
+  fDesiredVal = 51.7;
+  wait(0.9, sec);
+  // indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
+  printf("second disc\n");
+  // indexer.spin(reverse,8,voltageUnits::volt);
+  wait(140,msec);
+  // indexer.stop();
+
+  vex::task::suspend(spinfly); 
+
+  // indexer.spinToPosition(0,degrees);
+
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
+  flywheel.stop();
+  enableFlywheelPID = false;
+  
+  // turn to intake
+  
+  driveL.setVelocity(63,percent);
+  driveR.setVelocity(63,percent);
+  driveL.spinFor(forward,1.257,turns,false);
+  driveR.spinFor(reverse,1.257,turns,false);
+  wait(0.7, sec);
+  // intake 3
+  intake.spin(forward,12,voltageUnits::volt);
+  driveL.spin(forward,50,percent);
+  driveR.spin(forward,50,percent);
+  wait(1.09, sec); // 1.1 at 50
+  driveL.spin(forward,15,percent);
+  driveR.spin(forward,15,percent);
+  wait(1.52,sec); // 1.5 at 15
+  driveL.spin(forward,50,percent);
+  driveR.spin(forward,50,percent);
+  wait(0.4, sec);
+  // turn to shoot
+  driveL.stop();
+  driveR.stop();
+  wait(0.5,sec);
+  driveL.setVelocity(60,percent);
+  driveR.setVelocity(60,percent);
+  
+  driveL.spinFor(reverse,1.91,turns,false);
+  driveR.spinFor(forward,1.91,turns,false);
+  wait(0.9, sec);
+  intake.stop();
+  // shoot 3
+  enableFlywheelPID = true;
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+  // shoot 3
+  fDesiredVal = 47;
+  fkP = 0.30; //0.38
+  fkI = 0.08; //0.1
+  fkD = 0.04; //0.06
+
+  // vex::task spinfly(flyPI);
+  vex::task::resume(spinfly);
+  intake.stop();
+  wait(1.5, sec);
+
+  // indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
+  printf("first disc\n");
+  // indexer.spin(reverse,8,voltageUnits::volt);
+  wait(140,msec);
+  // indexer.stop();
+  fDesiredVal = 50;
+  wait(0.6, sec);
+  // indexer.spin(forward,11,voltageUnits::volt);
+  wait(95,msec);
+  printf("second disc\n");
+  // indexer.spin(reverse,8,voltageUnits::volt);
+  wait(140,msec);
+  // indexer.stop();
+  fDesiredVal = 51;
+  wait(0.6, sec);
+  // indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
+  printf("third disc\n");
+  // indexer.spin(reverse,8,voltageUnits::volt);
+  wait(140,msec);
+  wait(0.6, sec);
+  // indexer.spin(forward,8,voltageUnits::volt);
+  wait(140,msec);
+  printf("fourth try\n");
+  // indexer.spin(reverse,8,voltageUnits::volt);
+  wait(140,msec);
+  // indexer.stop();
+  vex::task::stop(spinfly); 
+  // indexer.spinToPosition(0,degrees);
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
+  flywheel.stop();
+  enableFlywheelPID = false;
+  
+}
 
 void auto3v2() {
   // 2 tile side
@@ -559,7 +780,7 @@ void auto3v2() {
   fDesiredVal = 0; 
   flywheel.stop();
   enableFlywheelPID = false;
-  /*
+  
   // // turn to intake
   driveL.setVelocity(60,percent);
   driveR.setVelocity(60,percent);
@@ -619,7 +840,7 @@ void auto3v2() {
   fDesiredVal = 0; 
   flywheel.stop();
   enableFlywheelPID = false;
-  */
+  
 }
 
 
@@ -675,8 +896,9 @@ int main() {
     Controller1.Axis3.changed(driver);
     Controller1.Axis1.changed(driver);
     Controller1.ButtonA.pressed(ind);
-    Controller1.ButtonR1.pressed(fastIndPID);
-    // Controller1.ButtonUp.pressed(expansion);
+    Controller1.ButtonR1.pressed(tripShot1);
+    Controller1.ButtonR2.pressed(tripShot2);
+    Controller1.ButtonUp.pressed(expansion);
     Controller1.ButtonB.pressed(farShot);
     
     Controller1.ButtonDown.pressed(temp);

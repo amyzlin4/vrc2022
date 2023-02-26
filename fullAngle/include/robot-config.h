@@ -17,6 +17,7 @@ extern encoder EncoderR;
 extern encoder EncoderL;
 extern motor flywheel;
 extern digital_out angler;
+extern digital_out expand;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.
