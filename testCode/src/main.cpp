@@ -12,7 +12,7 @@
 // [Name]               [Type]        [Port(s)]
 // intake               motor         3               
 // Controller1          controller                    
-// Inertial             inertial      1               
+// InertialL            inertial      1               
 // MotorR1              motor         8               
 // MotorR2              motor         9               
 // MotorR3              motor         10              
@@ -22,6 +22,7 @@
 // MotorL1              motor         11              
 // MotorL2              motor         12              
 // MotorL3              motor         13              
+// InertialR            inertial      20              
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
@@ -33,37 +34,27 @@ competition Competition;
 
 // define your global instances of motors and other devices here
 
-int flyC = 1;
-int inC = 1;
 bool toggleF = false;
 bool lastF = false;
 bool slowF = false;
+bool fly = true;
+// bool enableFlyPID = false;
+
 bool toggleI = false;
 bool lastI = false;
 bool revI = false;
 int intVel = 100;
+bool enableInt = true;
+
 double DRIVE = 0.014; // update
 double TURN = 8; // update
-bool lastP = false;
-bool toggleP = false;
 bool enableDriver = true;
-bool enableInt = true;
-bool toggleR = false;
-bool lastR = false;
-int bkwd = 1;
-bool fly = true;
+
 bool toggleA = false;
 bool lastA = false;
-// constants
-// double kp = 0.15; // decreases as voltage increases
-// double ki = 0.9; // tends to not change
-// double kd = 0.03; // decreases for second and third discs
-// double error;
-// double prevError = 0;
-// double deriv;
-// double totalError = 0;
-// double desiredVal = 0;
-bool enableFlyPID = false;
+
+bool lastE = false;
+bool toggleE = false;
 /*===================================================================*/
 double fkP = 0.15; // decreases as voltage increases
 double fkI = 0.9; // tends to not change
@@ -76,16 +67,32 @@ double fPrevError = 0;
 double fTotalError = 0;
 double totalTimesShot = 0;
 /*===================================================================*/
-double dkP = 0.0;
-double dkI = 0.0;
-double dkD = 0.0;
-double dDeriv;
-double dDesiredVal;
-double dErr;
-double dPrevErr = 0;
-double dTotalErr = 0;
-bool enableDrivePID = false;
+double dLkP = 0.01;
+double dLkI = 0.0;
+double dLkD = 0.03;
+double dLDeriv;
+double dLDesiredVal;
+double dLErr;
+double dLPrevErr = 0;
+double dLTotalErr = 0;
 
+double dRkP = 0.01;
+double dRkI = 0.0;
+double dRkD = 0.03;
+double dRDeriv;
+double dRDesiredVal;
+double dRErr;
+double dRPrevErr = 0;
+double dRTotalErr = 0;
+
+double turnKP = 0.005;
+double turnKI = 0.0;
+double turnKD = 0.001;
+double turnError;      // sensorValue - DesiredValue: a position value
+double turnPrevError = 0;  // position 20 milliseconds ago
+double turnDerivative; // error - prevError: speed
+double turnTotalError = 0; // totalError + error
+/*===================================================================*/
 // DRIVETRAIN:
 // double wheelTravel = 12.56; // circumference 
 double trackWidth = 1.0; // front edge, wheel to wheel
@@ -96,6 +103,150 @@ motor_group driveR = motor_group(MotorR1, MotorR2, MotorR3);
 // DRIVER CONTROL FUNCTIONS:
 /*================================================================================================*/
 
+bool enableDriveLPID = true;
+bool enableDriveRPID = true;
+
+double desiredValue = 200;
+int desiredTurnValue = 0; //set it to whatever absolute angle (in relation to the orientation while initialzing) you want. The actual turn position is then your inertial sensor's rotation value. 
+
+bool resetDriveLSensors = false;
+bool resetDriveRSensors = false;
+
+int driveLPID() {
+
+  while (enableDriveLPID) {
+
+    if (resetDriveLSensors) {
+      resetDriveLSensors = false;
+
+      driveL.setPosition(0, degrees);
+      InertialL.setHeading(0,degrees);
+
+      dLDeriv = 0;
+      dLErr = 0;
+      dLPrevErr = 0;
+      dLTotalErr = 0;
+
+    }
+
+    //current rotational position of the first motor in a motor group:
+    double leftMotorPosition = -driveL.position(degrees);
+    printf("driveL: %.3f\n", leftMotorPosition);
+
+    /////////////////////////////////
+    //  lateral movement PID
+    ////////////////////////////////
+
+    dLErr = leftMotorPosition - dLDesiredVal; // Proportional (P)
+    dLDeriv = dLErr - dLPrevErr; // derivative (D)
+    dLTotalErr += dLErr;  // integral (I)
+
+    double lateralMotorPower = dLErr * dLkP + dLDeriv * dLkD + dLTotalErr * dLkI;
+    // if to do degrees than voltage, just /360 instead of /12
+
+    /////////////////////////////////
+    //  pointing PID
+    ////////////////////////////////
+
+    double turnDifference = InertialL.heading(degrees);
+    if(turnDifference > 180)
+    {
+      turnDifference = 360 - turnDifference;
+    }
+    printf("Inertial: %.3f\n", turnDifference);
+
+    turnError = turnDifference - desiredTurnValue; // (P)
+    turnDerivative = turnError - turnPrevError; // derivative (D)
+    turnTotalError += turnError;  // integral (I) ----> considering not using it for drivetrain, PD control
+
+    double turnMotorPower = turnError * turnKP + turnDerivative * turnKD + turnTotalError * turnKI;
+    turnMotorPower = 0;
+
+
+    /////////////////////////////////
+    //   overall
+    ////////////////////////////////
+    driveL.spin(forward, lateralMotorPower + turnMotorPower, voltageUnits::volt);
+    double outHeading = InertialL.heading(degrees);
+    printf("L output: %.3f\nHeading: %.3f\n", lateralMotorPower + turnMotorPower,  outHeading);
+
+    dLPrevErr = dLErr;
+    turnPrevError = turnError;
+    vex::task::sleep(20);
+
+  }
+
+  return 1;
+}
+
+int driveRPID() {
+
+  while (enableDriveRPID) {
+
+    if (resetDriveRSensors) {
+      resetDriveRSensors = false;
+
+      driveR.setPosition(0, degrees);
+      InertialR.setHeading(0,degrees);
+
+      dRDeriv = 0;
+      dRErr = 0;
+      dRPrevErr = 0;
+      dRTotalErr = 0;
+
+    }
+
+    //current rotational position of the first motor in a motor group:
+    double rightMotorPosition = -driveR.position(degrees);
+    printf("driveR: %.3f\n",  rightMotorPosition);
+
+    /////////////////////////////////
+    //  lateral movement PID
+    ////////////////////////////////
+
+    dRErr = rightMotorPosition - dRDesiredVal; // Proportional (P)
+    dRDeriv = dRErr - dRPrevErr; // derivative (D)
+    dRTotalErr += dRErr;  // integral (I)
+
+    double lateralMotorPower = dRErr * dRkP + dRDeriv * dRkD + dRTotalErr * dRkI;
+    // if to do degrees than voltage, just /360 instead of /12
+
+    /////////////////////////////////
+    //  pointing PID
+    ////////////////////////////////
+
+    double turnDifference = InertialR.heading(degrees);
+    if(turnDifference > 180)
+    {
+      turnDifference = 360 - turnDifference;
+    }
+    printf("Inertial: %.3f\n", turnDifference);
+
+    turnError = turnDifference - desiredTurnValue; // (P)
+    turnDerivative = turnError - turnPrevError; // derivative (D)
+    turnTotalError += turnError;  // integral (I) ----> considering not using it for drivetrain, PD control
+
+    double turnMotorPower = turnError * turnKP + turnDerivative * turnKD + turnTotalError * turnKI;
+    turnMotorPower = 0;
+
+
+    /////////////////////////////////
+    //   overall
+    ////////////////////////////////
+    driveR.spin(forward, lateralMotorPower - turnMotorPower, voltageUnits::volt);
+    double outHeading = InertialR.heading(degrees);
+    printf("R output: %.3f\nHeading: %.3f\n", lateralMotorPower - turnMotorPower, outHeading);
+
+    dRPrevErr = dRErr;
+    turnPrevError = turnError;
+    vex::task::sleep(20);
+
+  }
+
+  return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
 int flyPI() {
 
   while(true) {
@@ -123,8 +274,6 @@ int flyPI() {
 
 ////////////////////////////////////////////////////////////////////////////////////
 bool enableFlywheelPID = false;
-
-
 
 int flywheelPID(){
 
@@ -228,24 +377,16 @@ void tank() {
 
 int toggleFly() {  // use int for tasks (?)
   while(enableDriver) {
-    if(Controller1.ButtonA.pressing() && !Controller1.ButtonY.pressing() && !lastF) { 
+    if(Controller1.ButtonY.pressing()&& !lastF) { 
     // if buttonY is pressing and button was not pressed before:
       toggleF = !toggleF; // switch toggle
       lastF = true; // button was pressed before
-      slowF = false; // set to normal speed
-      fly = true;
-      // enableFlyPID = false;
-      enableFlywheelPID = false;
-    } else if(!Controller1.ButtonA.pressing() && Controller1.ButtonY.pressing() && !lastF) {
-    // else if buttonB is pressing and button was not pressed before:
-      toggleF = !toggleF; // switch toggle
-      lastF = true; // button was pressed before
-      slowF = true; // set to slower speed
+      slowF = true; // set to normal speed
       fly = true;
       // enableFlyPID = false;
       enableFlywheelPID = false;
 
-    } else if(!Controller1.ButtonY.pressing() && !Controller1.ButtonA.pressing()) {
+    } else if(!Controller1.ButtonY.pressing()) {
     // else if button is not pressing:
       lastF = false; // button was not pressed before
       ///////// try this:
@@ -255,18 +396,15 @@ int toggleFly() {  // use int for tasks (?)
       // flywheel.spin(forward,1.5,voltageUnits::volt);
     }
     
-    if(toggleF && !slowF) {
+    if(toggleF && slowF) {
       // if toggle on and not slow
       flywheel.setStopping(coast);
       flywheel.spin(forward,12.0,voltageUnits::volt);
 
-    } else if(toggleF && slowF) {
-      // if toggle on and slow
-      flywheel.setStopping(coast);
-      flywheel.spin(forward,10,voltageUnits::volt);
+    
     } else if(fly && !enableFlywheelPID) {
       
-      flywheel.spin(forward,4.5,voltageUnits::volt);
+      flywheel.spin(forward,5.0,voltageUnits::volt);
       // flywheel.setVelocity(0,percent);
       // flywheel.stop();
 
@@ -335,11 +473,6 @@ void tripShot1() {
   fDerivative = 0;
   fTotalError = 0;
 
-  // fDesiredVal = 100;
-  // fDesiredVal = 12;
-  // fkP = 0.38; //0.38
-  // fkI = 0; //0.1
-  // fkD = 0.1; //0.06
   fDesiredVal = 80;//80
   fkP = 0.48; //0.38
   fkI = 0; //0.1
@@ -349,25 +482,15 @@ void tripShot1() {
   // vex::task PIDfly(flywheelPID);
   // vex::task PIDfly(flyPI);
   flywheel.spin(forward,12,voltageUnits::volt);
+  toggleA = false;
+  angler.set(false); // angle up
   
-  wait(0.4, sec); 
+  wait(0.15, sec); //0.5
   enableInt = true;
-  intake.spin(reverse,12,voltageUnits::volt);
+  intake.spin(reverse,9,voltageUnits::volt); //10
  
-  wait(0.15, sec);
+  wait(1.2, sec);
   
-  enableInt = false;
-  wait(0.18, sec);
-  enableInt = true;
-  intake.spin(reverse,12,voltageUnits::volt);
-  wait(0.16, sec);
-
-  enableInt = false;
-  wait(0.15, sec);
-  enableInt = true;
-  intake.spin(reverse,12,voltageUnits::volt);
-
-  wait(0.3, sec);
   enableInt = false;
   // vex::task::stop(PIDfly);
   flywheel.setStopping(coast);
@@ -386,6 +509,7 @@ void tripShot1() {
 }
 
 void tripShot2() {
+  //good
   fly = false;
 
   driveL.setStopping(hold);
@@ -406,12 +530,62 @@ void tripShot2() {
   // vex::task PIDfly(flywheelPID);
   // vex::task PIDfly(flyPI);
   flywheel.spin(forward,12,voltageUnits::volt);
+  toggleA = false;
+  angler.set(false); // angle up
   
-  wait(0.4, sec); 
+  wait(0.33, sec); //0.5
   enableInt = true;
-  intake.spin(reverse,12,voltageUnits::volt);
+  intake.spin(reverse,9,voltageUnits::volt); //10
  
-  wait(1, sec);
+  wait(1.2, sec);
+  
+  enableInt = false;
+  // vex::task::stop(PIDfly);
+  flywheel.setStopping(coast);
+  flywheel.stop();
+  intake.stop();
+  fly = true;
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0;
+  enableFlywheelPID = false;
+  driveL.setStopping(coast);
+  driveR.setStopping(coast);
+  enableInt = false;
+
+}
+
+void tripShot3() {
+  fly = false;
+
+  driveL.setStopping(hold);
+  driveR.setStopping(hold);
+
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDerivative = 0;
+  fTotalError = 0;
+
+  fDesiredVal = 80;//80
+  fkP = 0.48; //0.38
+  fkI = 0; //0.1
+  fkD = 0.1; //0.06
+  
+  enableFlywheelPID = true;
+  // vex::task PIDfly(flywheelPID);
+  // vex::task PIDfly(flyPI);
+  flywheel.spin(forward,12,voltageUnits::volt);
+
+  toggleA = true;
+  angler.set(true);
+  
+  wait(0.45, sec); 
+  enableInt = true;
+  intake.spin(reverse,9,voltageUnits::volt);
+ 
+  wait(1.2, sec);
   
   enableInt = false;
   // vex::task::stop(PIDfly);
@@ -520,8 +694,9 @@ int toggleAngl() {
 
 void expansion() {
   if(Controller1.ButtonUp.pressing()) {
+    printf("EXPAND\n");
     expand.set(true);
-    wait(2,sec);
+    wait(1,sec);
     expand.set(false);
   }
 }
@@ -604,7 +779,8 @@ void pre_auton(void) {
   flywheel.setStopping(coast);
   driveL.setStopping(brake);
   driveR.setStopping(brake);
-  Inertial.calibrate();
+  InertialL.calibrate();
+  InertialR.calibrate();
   angler.set(false);
   expand.set(false);
 }
@@ -613,52 +789,7 @@ void pre_auton(void) {
 // Autonomous
 /* --------------------------------------------------------------------------*/
 
-//TEST CODE
-void testFwd() {
-  // driveL.setVelocity(70,percent);
-  // driveR.setVelocity(70,percent);
-  // driveR.spinFor(forward, 10, turns, false);
-  // driveL.spinFor(forward, 10, turns, false);
-  
-  driveL.spin(forward,7,voltageUnits::volt);
-  driveR.spin(forward,7,voltageUnits::volt);
 
-  wait(1.5, sec); //1.5
-  driveL.stop();
-  driveR.stop();
-}
-void testBwd() {
-  // driveL.setVelocity(70,percent);
-  // driveR.setVelocity(70,percent);
-  // driveL.spinFor(reverse, 10, turns, false);
-  // driveR.spinFor(reverse, 10, turns, false);
-
-  driveL.spin(reverse,7,voltageUnits::volt);
-  driveR.spin(reverse,7,voltageUnits::volt);
-
-  wait(1.5 , sec); //1.5
-  driveL.stop();
-  driveR.stop();
-}
-
-void setCoast() {
-  driveL.setStopping(coast);
-  driveR.setStopping(coast);
-  Controller1.Screen.clearScreen();
-  Controller1.Screen.print("COAST");
-}
-void setBrake() {
-  driveL.setStopping(brake);
-  driveR.setStopping(brake);
-  Controller1.Screen.clearScreen();
-  Controller1.Screen.print("BRAKE");
-}
-void setHold() {
-  driveL.setStopping(hold);
-  driveR.setStopping(hold);
-  Controller1.Screen.clearScreen();
-  Controller1.Screen.print("HOLD");
-}
 
 /*================================================================================================*/
 /* TOURNAMENT AUTONS                                                                              */
@@ -727,26 +858,364 @@ void auto2v1() {
   
 }
 
-void test1() {
+void intakev1() {
   
-  flywheel.spin(forward,12,voltageUnits::volt);
+  dRkP = 0.01;
+  dRkI = 0.0;
+  dRkD = 0.05;
+  dLkP = 0.01;
+  dLkI = 0.0;
+  dLkD = 0.05;
   
-  wait(1.3, sec); 
-  intake.spin(reverse,9,voltageUnits::volt);
- 
-  wait(1.3, sec);
-  
-  flywheel.setStopping(coast);
-  flywheel.stop();
-  intake.stop();
+  enableDriveLPID = true;
+  enableDriveRPID = true;
+  vex::task driveLTask(driveLPID);
+  vex::task driveRTask(driveRPID);
+  intake.spin(forward,12,voltageUnits::volt);
+
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = -2000; 
+  dRDesiredVal = 575; 
+  wait(0.175, sec);
+  dRkP = 0.004;
+  dLkP = 0.004;
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = -2500; 
+  dRDesiredVal = -2250;
+  desiredTurnValue = 0; 
+  wait(1.7, sec);
+
+  vex::task::stop(driveLTask); 
+  vex::task::stop(driveRTask);
+  enableDriveLPID = false;
+  enableDriveRPID = false;
+  driveL.stop();
+  driveR.stop();
   
 }
+
+void l9v1() {
+  
+  // starting position: facing disc
+
+  angler.set(true);
+
+  enableFlywheelPID = true;
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+
+  fDesiredVal = 12;
+  fkP = 0.48; //0.38
+  fkI = 0.1; //0.1
+  fkD = 0.0; //0.06
+
+  vex::task spinfly(flyPI);
+
+  driveL.setVelocity(30,percent);
+  driveR.setVelocity(30,percent);
+  driveL.setStopping(coast);
+  driveR.setStopping(coast);
+
+  intake.spin(forward,12,voltageUnits::volt);
+  driveL.spinFor(forward, 200,degrees,false);
+  driveR.spinFor(forward, 200,degrees,false);
+  wait(0.5, sec);
+
+  driveL.spinFor(reverse, 100,degrees,false);
+  driveR.spinFor(reverse, 100,degrees,false);
+  wait(0.3, sec);
+
+  // turn to roller
+  driveL.spinFor(forward, 130,degrees,false);
+  driveR.spinFor(reverse, 130,degrees,false);
+  wait(0.5, sec);
+
+  // roll
+  driveL.spinFor(reverse, 200,degrees,false);
+  driveR.spinFor(reverse, 200,degrees,false);
+  wait(0.5, sec);
+  driveL.spinFor(forward, 150,degrees,false);
+  driveR.spinFor(forward, 150,degrees,false);
+  wait(0.4, sec);
+  intake.stop();
+
+  // shoot
+  intake.spin(forward, 100, percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.1, sec);
+  
+  intake.spin(reverse,100,percent);
+  wait(0.12, sec);
+  intake.stop();
+  wait(0.2, sec);
+
+  intake.spin(forward, 100, percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.3, sec);
+
+  intake.spin(reverse,100,percent);
+  wait(0.13, sec);
+  intake.stop(); 
+  wait(0.1, sec);
+
+  intake.spin(forward, 100, percent);
+  wait(0.1, sec);
+  intake.stop();
+  wait(0.3, sec);
+
+  intake.spin(reverse,100,percent);
+  wait(0.3, sec);
+  intake.stop(); 
+  wait(0.1, sec);
+  vex::task::suspend(spinfly); 
+
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
+  flywheel.stop();
+  enableFlywheelPID = false;
+
+  // intake
+  dRkP = 0.01;
+  dRkI = 0.0;
+  dRkD = 0.05;
+  dLkP = 0.01;
+  dLkI = 0.0;
+  dLkD = 0.05;
+  
+  enableDriveLPID = true;
+  enableDriveRPID = true;
+  vex::task driveLTask(driveLPID);
+  vex::task driveRTask(driveRPID);
+  intake.spin(forward,12,voltageUnits::volt);
+
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = -2000; 
+  dRDesiredVal = 580; 
+  wait(0.183, sec);
+  dRkP = 0.004;
+  dLkP = 0.004;
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = -2700; 
+  dRDesiredVal = -2450;
+  desiredTurnValue = 0; 
+  wait(1.1, sec);
+
+  enableFlywheelPID = true;
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+
+  fDesiredVal = 12;
+  fkP = 0.48; //0.38
+  fkI = 0.1; //0.1
+  fkD = 0.0; //0.06
+
+  vex::task::resume(spinfly);
+  wait(0.7, sec); //0.7
+
+  vex::task::stop(driveLTask); 
+  vex::task::stop(driveRTask);
+  enableDriveLPID = false;
+  enableDriveRPID = false;
+  driveL.stop();
+  driveR.stop();
+  wait(0.1, sec);
+
+  // turn to shoot
+  driveL.setVelocity(75,percent);
+  driveR.setVelocity(75,percent);
+  driveL.spinFor(reverse, 1.115,turns,false);
+  driveR.spinFor(forward, 1.115,turns,false);
+  wait(0.9, sec);
+
+  // shoot
+  intake.spin(forward, 100, percent);
+  wait(0.44, sec);
+  intake.stop();
+  wait(0.1, sec);
+  
+  intake.spin(reverse,100,percent);
+  wait(0.13, sec);
+  intake.stop();
+  wait(0.1, sec);
+
+  intake.spin(forward, 100, percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.1, sec);
+
+  intake.spin(reverse,100,percent);
+  wait(0.13, sec);
+  intake.stop(); 
+  wait(0.1, sec);
+
+  intake.spin(forward, 100, percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.1, sec);
+
+  intake.spin(reverse,100,percent);
+  wait(0.14, sec);
+  intake.stop(); 
+  wait(0.1, sec);
+  vex::task::suspend(spinfly); 
+
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
+  flywheel.stop();
+  enableFlywheelPID = false;
+  wait(0.15, sec);  
+
+  // intake
+
+  dRkP = 0.006;
+  dRkI = 0.0;
+  dRkD = 0.05;
+  dLkP = 0.006;
+  dLkI = 0.0;
+  dLkD = 0.05;
+  
+  enableDriveLPID = true;
+  enableDriveRPID = true;
+  vex::task driveLTask1(driveLPID);
+  vex::task driveRTask1(driveRPID);
+
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = 2250; 
+  dRDesiredVal = 2300; 
+  wait(0.9, sec);
+  vex::task::suspend(driveLTask1); 
+  vex::task::suspend(driveRTask1);
+  // driveL.setStopping(brake);
+  // driveR.setStopping(brake);
+  driveL.stop();
+  driveR.stop();
+  wait(0.2, sec);
+  vex::task::resume(driveLTask1); 
+  vex::task::resume(driveRTask1);
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = 0; 
+  dRDesiredVal = 780;
+  wait(0.15, sec);
+  vex::task::stop(driveLTask1); 
+  vex::task::stop(driveRTask1);
+  enableDriveLPID = false;
+  enableDriveRPID = false;
+  driveL.stop();
+  driveR.stop();
+  wait(0.2, sec);
+
+  enableFlywheelPID = true;
+  // reset
+  fError = 0;
+  fPrevError = 0;
+  fDeriv = 0;
+  fTotalError = 0;
+
+  fDesiredVal = 12;
+  fkP = 0.48; //0.38
+  fkI = 0.1; //0.1
+  fkD = 0.0; //0.06
+
+  vex::task::resume(spinfly);
+  // vex::task spinfly(flyPI);
+
+  enableDriveLPID = true;
+  enableDriveRPID = true;
+  vex::task driveLTask2(driveLPID);
+  vex::task driveRTask2(driveRPID);
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  intake.spin(forward,12,voltageUnits::volt);
+  dRkP = 0.003;
+  dLkP = 0.003;
+  resetDriveLSensors = true;
+  resetDriveRSensors = true;
+  dLDesiredVal = -2500; 
+  dRDesiredVal = -2100;
+  desiredTurnValue = 0; 
+  wait(1.2, sec);
+
+  vex::task::stop(driveLTask2); 
+  vex::task::stop(driveRTask2);
+  enableDriveLPID = false;
+  enableDriveRPID = false;
+  driveL.stop();
+  driveR.setStopping(hold);
+  driveR.stop();
+  wait(0.5, sec);
+
+  // turn to shoot
+  driveL.setVelocity(75,percent);
+  driveL.spinFor(reverse, 1.6,turns,false);
+  wait(0.7, sec);
+
+  // shoot
+  intake.spin(forward, 100, percent);
+  wait(0.2, sec);
+  intake.stop();
+  wait(0.1, sec);
+  
+  intake.spin(reverse,100,percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.1, sec);
+
+  intake.spin(forward, 100, percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.1, sec);
+
+  intake.spin(reverse,100,percent);
+  wait(0.14, sec);
+  intake.stop(); 
+  wait(0.1, sec);
+
+  intake.spin(forward, 100, percent);
+  wait(0.14, sec);
+  intake.stop();
+  wait(0.1, sec);
+
+  intake.spin(reverse,100,percent);
+  wait(0.2, sec);
+  intake.stop(); 
+  wait(0.1, sec);
+  vex::task::suspend(spinfly); 
+
+  fkP = 0;
+  fkI = 0;
+  fkD = 0;
+  fDesiredVal = 0; 
+  flywheel.stop();
+  enableFlywheelPID = false;  
+
+}
+
+
 
 
 void autonomous(void) {
   // enableDriver = false;
   // auto2v1();
-  test1();
+  // test1();
+  l9v1();
 
 }
 
@@ -797,10 +1266,12 @@ int main() {
     Controller1.Axis1.changed(driver);
     // Controller1.Axis4.changed(tank);
     Controller1.ButtonB.pressed(ind);
-    // Controller1.ButtonR2.pressed(tripShot);
-    // Controller1.ButtonR2.pressed(tripShot2);
+    // Controller1.ButtonR2.pressed(tripShot1);
+    // Controller1.ButtonR2.pressed(tripShot3);
+    Controller1.ButtonR2.pressed(tripShot2);
     // Controller1.ButtonUp.pressed(expansion);
-    Controller1.ButtonX.pressed(farShot);
+    Controller1.ButtonX.pressed(tripShot1);
+    Controller1.ButtonA.pressed(tripShot3);
 
     // Controller1.ButtonB.pressed(setCoast);
     // Controller1.ButtonY.pressed(setBrake);
@@ -810,6 +1281,7 @@ int main() {
     // Controller1.ButtonR2.pressed(testBwd);
     
     Controller1.ButtonDown.pressed(temp);
+    Controller1.ButtonUp.pressed(expansion);
 
     wait(100, msec);
   }

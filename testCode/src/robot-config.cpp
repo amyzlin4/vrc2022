@@ -10,7 +10,7 @@ brain  Brain;
 // VEXcode device constructors
 motor intake = motor(PORT3, ratio6_1, false);
 controller Controller1 = controller(primary);
-inertial Inertial = inertial(PORT1);
+inertial InertialL = inertial(PORT1);
 motor MotorR1 = motor(PORT8, ratio6_1, false);
 motor MotorR2 = motor(PORT9, ratio6_1, false);
 motor MotorR3 = motor(PORT10, ratio6_1, false);
@@ -20,6 +20,7 @@ digital_out expand = digital_out(Brain.ThreeWirePort.B);
 motor MotorL1 = motor(PORT11, ratio6_1, true);
 motor MotorL2 = motor(PORT12, ratio6_1, true);
 motor MotorL3 = motor(PORT13, ratio6_1, true);
+inertial InertialR = inertial(PORT20);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable
