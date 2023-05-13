@@ -1,3 +1,4 @@
 # VRC 2022-2023
-This repository contains my final programs for VEX Robotics Competition season 2022-2023, Spin Up. During this season, I was the team captain and lead programmer for 87867D.
+This repository contains all of my programs for VEX Robotics Competition season 2022-2023, Spin Up. During this season, I was the team captain and lead programmer for 87867D.
 
+This season, I was able to implement new algorithms through the use of VEXcode Pro (C++). For instance, I utilized PID for regulating the velocity of the flywheel, the driving distance of the drivetrain, and the turning angle of the drivetrain. I also used a combination of tasks and functions to create diverse, flexible behaviors for driver control; tasks were necessary to develop toggle/switch buttons for the flywheel and intake, and functions were used for actions like the triple shot or single indexer. Each of these methods relied on boolean variables to "enable" or "disable" certain tasks/functions in order to allow others to run.
