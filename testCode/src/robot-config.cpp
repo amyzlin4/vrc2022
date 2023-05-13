@@ -21,6 +21,7 @@ motor MotorL1 = motor(PORT11, ratio6_1, true);
 motor MotorL2 = motor(PORT12, ratio6_1, true);
 motor MotorL3 = motor(PORT13, ratio6_1, true);
 inertial InertialR = inertial(PORT20);
+controller Controller2 = controller(partner);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable
